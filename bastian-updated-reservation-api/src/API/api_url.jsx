@@ -1,7 +1,7 @@
 //const API_URL = "";
-// const API_URL = "http://localhost/bastian";
+const API_URL = "http://localhost/bastian/admin";
 // const API_URL = "https://bastianhospitality.com/admin";
-const API_URL = "https://bastian.ninetriangles.com/admin";
+// const API_URL = "https://bastian.ninetriangles.com/admin";
 const APP_URL = "https://bastianhospitality.com/";
 
 // Secure API headers for backend communication (no sensitive data exposed)

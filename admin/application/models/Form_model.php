@@ -68,6 +68,34 @@ class form_model extends CI_Model
         }
         return $catId ? $catId : FALSE;
     }
+
+    public function GetRecentReservations($limit = 10)
+    {
+        $this->db->select('*');
+        $this->db->from('tbl_forms_data');
+        $this->db->order_by('insert_date', 'DESC');
+        $this->db->limit($limit);
+        $query = $this->db->get();
+        return $query->result_array();
+    }
+
+    public function CheckTableStructure()
+    {
+        // Check if table exists and get structure
+        $query = $this->db->query("SHOW TABLES LIKE 'tbl_forms_data'");
+        $table_exists = $query->num_rows() > 0;
+
+        $structure = array();
+        if ($table_exists) {
+            $query = $this->db->query("DESCRIBE tbl_forms_data");
+            $structure = $query->result_array();
+        }
+
+        return array(
+            'table_exists' => $table_exists,
+            'structure' => $structure
+        );
+    }
     public function AddCareerData($data)
     {
         $condition = "id ='" . $data['id'] . "'";

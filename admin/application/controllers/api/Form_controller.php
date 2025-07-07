@@ -1,12 +1,18 @@
 <?php  
 defined('BASEPATH') OR exit('No direct script access allowed');
  
-class form_controller extends CI_Controller { 
-    public function __construct() {  
-        parent::__construct(); 
+class Form_controller extends CI_Controller {
+    public function __construct() {
+        parent::__construct();
         date_default_timezone_set('Asia/Kolkata');
 		$this->currentTime = date( 'Y-m-d H:i:s', time () );
         $this->apikey = '123456789';
+
+        // Load required models
+        $this->load->model('form_model');
+        $this->load->model('setting_model');
+        $this->load->library('email');
+
         header('Access-Control-Allow-Origin: *');
         header('Access-Control-Allow-Methods: GET, POST, OPTIONS, PUT, DELETE');
         header('Access-Control-Allow-Headers: Content-Type, Authorization');
@@ -131,31 +137,122 @@ class form_controller extends CI_Controller {
         if($this->apikey == $token) {
             $rawData = $this->input->raw_input_stream;
             $jsonData = json_decode($rawData);
+
+            // Debug: Log the received data
+            error_log("Reservation Form Data: " . print_r($jsonData, true));
+
+            // Check if formvalue exists
+            if (!isset($jsonData->formvalue)) {
+                $result['status'] = FALSE;
+                $result['message'] = 'Invalid data format - formvalue missing';
+                error_log("ERROR: formvalue missing in request data");
+                http_response_code(400);
+                $this->output->set_content_type('application/json')->set_output(json_encode($result));
+                return;
+            }
+
             $data = array(
                 'id' => '',
-                'restaurant_id' => $jsonData->formvalue->restaurant_id,
-                'pax' => $jsonData->formvalue->pax,
-                'booking_date' => $jsonData->formvalue->booking_date,
-                'booking_time' => $jsonData->formvalue->booking_time,
-                'full_name' => $jsonData->formvalue->full_name,
-                'email_id' => $jsonData->formvalue->email,
-                'contact_number' => $jsonData->formvalue->mobile,
-                'age' => $jsonData->formvalue->age,
-                'pin_code' => $jsonData->formvalue->pincode,
-                'comments' => $jsonData->formvalue->comments,
+                'restaurant_id' => isset($jsonData->formvalue->restaurant_id) ? $jsonData->formvalue->restaurant_id : '',
+                'pax' => isset($jsonData->formvalue->pax) ? $jsonData->formvalue->pax : '',
+                'booking_date' => isset($jsonData->formvalue->booking_date) ? $jsonData->formvalue->booking_date : '',
+                'booking_time' => isset($jsonData->formvalue->booking_time) ? $jsonData->formvalue->booking_time : '',
+                'full_name' => isset($jsonData->formvalue->full_name) ? $jsonData->formvalue->full_name : '',
+                'email_id' => isset($jsonData->formvalue->email) ? $jsonData->formvalue->email : '',
+                'contact_number' => isset($jsonData->formvalue->mobile) ? $jsonData->formvalue->mobile : '',
+                'age' => isset($jsonData->formvalue->age) ? $jsonData->formvalue->age : '',
+                'pin_code' => isset($jsonData->formvalue->pincode) ? $jsonData->formvalue->pincode : '',
+                'comments' => isset($jsonData->formvalue->comments) ? $jsonData->formvalue->comments : '',
+                'status' => '1', // Add status field
+                'insert_date' => $this->currentTime,
                 'edit_date' => $this->currentTime
             );
+
+            // Debug: Log the data being inserted
+            error_log("Data to insert: " . print_r($data, true));
+
             $AddData = $this->form_model->AddFormDetailsData($data);
-            if($AddData == TRUE) {
+
+            // Debug: Log the result
+            error_log("Insert result: " . ($AddData ? $AddData : 'FALSE'));
+
+            // Additional debugging - check database error
+            if (!$AddData) {
+                $db_error = $this->db->error();
+                error_log("Database error: " . print_r($db_error, true));
+            }
+
+            if($AddData && $AddData > 0) {
                 $result['status'] = TRUE;
+                $result['reservation_id'] = $AddData;
+                $result['message'] = 'Reservation saved successfully';
+                error_log("SUCCESS: Reservation saved with ID: " . $AddData);
                 http_response_code(200);
             } else {
                 $result['status'] = FALSE;
+                $result['message'] = 'Failed to save reservation data';
+                error_log("ERROR: Failed to save reservation data");
                 http_response_code(400);
             }
         } else {
             $result['status'] = FALSE;
             $result['message'] = 'unauthorized access';
+            http_response_code(401);
+        }
+        $this->output->set_content_type('application/json')->set_output(json_encode($result));
+    }
+
+    // Check database table structure
+    public function CheckDatabase() {
+        $token = $this->input->get_request_header('Authorization');
+        if($this->apikey == $token) {
+            $table_info = $this->form_model->CheckTableStructure();
+            $result = array(
+                'status' => TRUE,
+                'message' => 'Database check completed',
+                'table_info' => $table_info
+            );
+            http_response_code(200);
+        } else {
+            $result = array(
+                'status' => FALSE,
+                'message' => 'unauthorized access'
+            );
+            http_response_code(401);
+        }
+        $this->output->set_content_type('application/json')->set_output(json_encode($result));
+    }
+
+    // Test endpoint to debug reservation data
+    public function TestReservation() {
+        $token = $this->input->get_request_header('Authorization');
+        if($this->apikey == $token) {
+            // Get recent reservation data from database using model
+            $reservations = $this->form_model->GetRecentReservations();
+
+            $result = array(
+                'status' => TRUE,
+                'message' => 'Recent reservations retrieved',
+                'data' => $reservations,
+                'count' => count($reservations)
+            );
+
+            $rawData = $this->input->raw_input_stream;
+            $jsonData = json_decode($rawData);
+
+            $result = array(
+                'status' => TRUE,
+                'message' => 'Test endpoint working',
+                'received_data' => $jsonData,
+                'raw_data' => $rawData,
+                'current_time' => $this->currentTime
+            );
+            http_response_code(200);
+        } else {
+            $result = array(
+                'status' => FALSE,
+                'message' => 'unauthorized access'
+            );
             http_response_code(401);
         }
         $this->output->set_content_type('application/json')->set_output(json_encode($result));

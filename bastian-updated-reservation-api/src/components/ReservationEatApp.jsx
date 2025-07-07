@@ -96,9 +96,18 @@ const ReservationsEatApp = () => {
 
     try {
       setLoading(true);
+
+      // Extract time from start_time safely
+      let booking_time = "";
+      if (formData.start_time && formData.start_time.includes('T')) {
+        booking_time = formData.start_time.split('T')[1];
+      } else if (formData.start_time) {
+        booking_time = formData.start_time;
+      }
+
       const responseBackend = await ReservationForm({
         restaurant_id: formData.restaurant_id,
-        booking_date: formData.booking_date,
+        booking_date: formData.booking_date.toISOString().split('T')[0], // Format date as YYYY-MM-DD
         full_name: formData.first_name + " " + formData.last_name,
         email: formData.email,
         mobile: formData.phone,
@@ -106,7 +115,7 @@ const ReservationsEatApp = () => {
         age: formData.agerange,
         pincode: formData.pincode,
         comments: formData.notes,
-        booking_time: formData.start_time.split('T')[1],
+        booking_time: booking_time,
       });
       console.log({responseBackend});
       const response = await EatAppSecureAPI.createReservation({
