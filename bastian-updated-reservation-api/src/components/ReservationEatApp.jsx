@@ -5,9 +5,8 @@ import ReCAPTCHA from "react-google-recaptcha";
 import success from "../assets/logo/success-icon.svg";
 import { useRestaurants } from "../API/user-reservation.jsx";
 import React from "react";
-import axios from 'axios';
 import { QRCodeSVG } from 'qrcode.react';
-import { EATAPP, EATAPP_API_HEADERS } from "../API/api_url";
+import EatAppSecureAPI from "../API/eatapp-secure.jsx";
 import { ReservationForm } from "../API/reservation";
 
 
@@ -63,18 +62,13 @@ const ReservationsEatApp = () => {
       }));
 
       setLoading(true);
-      const response = await axios.post(
-        EATAPP.AVAILABILITY,
-        {
-          restaurant_id: formData.restaurant_id,
-          earliest_start_time: formData.booking_date.toISOString().split('T')[0] + "T12:00:00",
-          latest_start_time: formData.booking_date.toISOString().split('T')[0] + "T22:00:00",
-          covers: parseInt(formData.covers),
-        },
-        { headers: EATAPP_API_HEADERS }
-      );
+      const data = await EatAppSecureAPI.getAvailability({
+        restaurant_id: formData.restaurant_id,
+        earliest_start_time: formData.booking_date.toISOString().split('T')[0] + "T12:00:00",
+        latest_start_time: formData.booking_date.toISOString().split('T')[0] + "T22:00:00",
+        covers: parseInt(formData.covers),
+      });
 
-      const data = response.data;
       if (data.data?.attributes?.available) {
         // Format the time slots to be more user-friendly
         const formattedSlots = data.data.attributes.available.map(time => ({
@@ -115,23 +109,19 @@ const ReservationsEatApp = () => {
         booking_time: formData.start_time.split('T')[1],
       });
       console.log({responseBackend});
-      const response = await axios.post(
-        EATAPP.RESERVATIONS,
-        {
-          restaurant_id: formData.restaurant_id,
-          covers: parseInt(formData.covers),
-          start_time: formData.start_time,
-          first_name: formData.first_name,
-          last_name: formData.last_name,
-          email: formData.email,
-          phone: formData.phone,
-          notes: formData.notes,
-          referrer_tag: "concierge",
-          terms_and_conditions_accepted: true,
-          marketing_accepted: true
-        },
-        { headers: { ...EATAPP_API_HEADERS, 'X-Restaurant-ID': formData.restaurant_id } }
-      );
+      const response = await EatAppSecureAPI.createReservation({
+        restaurant_id: formData.restaurant_id,
+        covers: parseInt(formData.covers),
+        start_time: formData.start_time,
+        first_name: formData.first_name,
+        last_name: formData.last_name,
+        email: formData.email,
+        phone: formData.phone,
+        notes: formData.notes,
+        referrer_tag: "concierge",
+        terms_and_conditions_accepted: true,
+        marketing_accepted: true
+      });
 
       if (response.status === 201 && response.data?.data?.attributes?.key) {
         setResponse(response);

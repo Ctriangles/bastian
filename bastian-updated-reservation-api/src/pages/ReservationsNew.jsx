@@ -12,7 +12,7 @@ import React from "react";
 import { Helmet } from "react-helmet";
 import axios from 'axios';
 import { QRCodeSVG } from 'qrcode.react';
-import { EATAPP, EATAPP_API_HEADERS } from "../API/api_url";
+import { EATAPP } from "../API/api_url";
 import ReservationsEatApp from "../components/ReservationEatApp.jsx";
 
 

@@ -60,3 +60,8 @@ $route['api/footer-sort-form'] = 'api/form_controller/FooterSortForm';
 $route['api/footer-long-form'] = 'api/form_controller/FooterLongForm';
 $route['api/career'] = 'api/form_controller/Career';
 $route['api/reservation-form'] = 'api/form_controller/ReservationForm';
+
+/* ------EatApp Secure API Wrapper-----*/
+$route['api/eatapp-restaurants'] = 'api/form_controller/EatAppRestaurants';
+$route['api/eatapp-availability'] = 'api/form_controller/EatAppAvailability';
+$route['api/eatapp-reservations'] = 'api/form_controller/EatAppReservations';

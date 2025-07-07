@@ -1,12 +1,43 @@
 import { useState, useEffect } from 'react';
-import axios from 'axios';
-import { EATAPP, EATAPP_API_HEADERS } from './api_url';
+import EatAppSecureAPI from './eatapp-secure.jsx';
 
-const API_BASE_URL = 'https://api.eat-sandbox.co/concierge/v2';
-const API_HEADERS = {
-  'Authorization': `Bearer eyJhbGciOiJIUzI1NiJ9.eyJleHAiOjE4OTIwNzM2MDAsImlhdCI6MTc0NTgxOTQ0NSwiaWQiOiJkOWZkNTI0Mi04YmQzLTQ1NDYtODNlNy1jZjU1NzY5MDI0MTIiLCJtb2RlbCI6IkNvbmNpZXJnZSIsImp0aSI6IjFkYWU1ZjYyOWM3M2VmOTU3M2U0IiwiYnkiOiJhbGlAZWF0YXBwLmNvIn0.ZCEiRP1gqPNvJEFYDVCk1uA6o0MSD2pzXu88eGh8xt0`,
-  'X-Group-ID': '4bcc6bdd-765b-4486-83ab-17c175dc3910',
-  'Accept': 'application/json'
+// Temporary mock data for restaurants while backend is being deployed
+const MOCK_RESTAURANTS = {
+  data: [
+    {
+      id: "1",
+      type: "restaurant",
+      attributes: {
+        name: "Bastian Test",
+        slug: "bastian-test",
+        description: "Contemporary seafood restaurant",
+        cuisine_types: ["Seafood", "Continental"],
+        location: {
+          address: "B/1, New Kamal Building, Linking Road, Bandra West, Mumbai",
+          city: "Mumbai",
+          state: "Maharashtra"
+        }
+      }
+    },
+    {
+      id: "2",
+      type: "restaurant",
+      attributes: {
+        name: "Bastian test 2",
+        slug: "bastian-test-2",
+        description: "Premium seafood dining experience",
+        cuisine_types: ["Seafood", "Continental"],
+        location: {
+          address: "Level 1, Palladium Mall, High Street Phoenix, Lower Parel, Mumbai",
+          city: "Mumbai",
+          state: "Maharashtra"
+        }
+      }
+    }
+  ],
+  meta: {
+    total: 2
+  }
 };
 
 const useRestaurants = () => {
@@ -18,26 +49,30 @@ const useRestaurants = () => {
     const fetchRestaurants = async () => {
       try {
         setLoading(true);
-        const response = await axios.get(EATAPP.RESTAURANTS, {
-          headers: EATAPP_API_HEADERS
-        });
 
-        // The API returns data in the format:
-        // {
-        //   data: [...],
-        //   meta: {...},
-        //   links: {...}
-        // }
-        if (response.data && response.data.data) {
-          setRestaurants(response.data);
-        } else {
-          setError('Invalid response format from API');
+        // Try to fetch from API first, fallback to mock data
+        try {
+          const response = await EatAppSecureAPI.getRestaurants();
+          if (response && response.data) {
+            setRestaurants(response);
+            return;
+          }
+        } catch (apiError) {
+          console.warn('API not available, using mock data:', apiError);
         }
+
+        // Use mock data as fallback
+        setTimeout(() => {
+          setRestaurants(MOCK_RESTAURANTS);
+        }, 500); // Simulate API delay
+
       } catch (err) {
         console.error('Error fetching restaurants:', err);
         setError('Failed to fetch restaurants');
       } finally {
-        setLoading(false);
+        setTimeout(() => {
+          setLoading(false);
+        }, 500);
       }
     };
 

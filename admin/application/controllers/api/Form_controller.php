@@ -254,4 +254,129 @@ class form_controller extends CI_Controller {
         curl_close($ch);
         return $response;
     }
+
+    // EatApp API Wrapper Methods - Secure backend proxy
+    private function getEatAppHeaders() {
+        // Store these in environment variables or secure config
+        $authKey = 'Bearer eyJhbGciOiJIUzI1NiJ9.eyJleHAiOjE4OTIwNzM2MDAsImlhdCI6MTc0NTgxOTQ0NSwiaWQiOiJkOWZkNTI0Mi04YmQzLTQ1NDYtODNlNy1jZjU1NzY5MDI0MTIiLCJtb2RlbCI6IkNvbmNpZXJnZSIsImp0aSI6IjFkYWU1ZjYyOWM3M2VmOTU3M2U0IiwiYnkiOiJhbGlAZWF0YXBwLmNvIn0.ZCEiRP1gqPNvJEFYDVCk1uA6o0MSD2pzXu88eGh8xt0';
+        $groupId = '4bcc6bdd-765b-4486-83ab-17c175dc3910';
+
+        return [
+            'Authorization: ' . $authKey,
+            'X-Group-ID: ' . $groupId,
+            'Accept: application/json',
+            'Content-Type: application/json'
+        ];
+    }
+
+    public function EatAppRestaurants() {
+        $token = $this->input->get_request_header('Authorization');
+        if($this->apikey == $token) {
+            $url = 'https://api.eat-sandbox.co/concierge/v2/restaurants';
+
+            $ch = curl_init();
+            curl_setopt($ch, CURLOPT_URL, $url);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_HTTPHEADER, $this->getEatAppHeaders());
+
+            $response = curl_exec($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+
+            if (curl_errno($ch)) {
+                $result['status'] = FALSE;
+                $result['message'] = 'API connection error';
+                http_response_code(500);
+            } else {
+                http_response_code($httpCode);
+                $this->output->set_content_type('application/json')->set_output($response);
+                return;
+            }
+            curl_close($ch);
+        } else {
+            $result['status'] = FALSE;
+            $result['message'] = 'unauthorized access';
+            http_response_code(401);
+        }
+        $this->output->set_content_type('application/json')->set_output(json_encode($result));
+    }
+
+    public function EatAppAvailability() {
+        $token = $this->input->get_request_header('Authorization');
+        if($this->apikey == $token) {
+            $rawData = $this->input->raw_input_stream;
+            $jsonData = json_decode($rawData, true);
+
+            $url = 'https://api.eat-sandbox.co/concierge/v2/availability';
+
+            $ch = curl_init();
+            curl_setopt($ch, CURLOPT_URL, $url);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_POST, true);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($jsonData));
+            curl_setopt($ch, CURLOPT_HTTPHEADER, $this->getEatAppHeaders());
+
+            $response = curl_exec($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+
+            if (curl_errno($ch)) {
+                $result['status'] = FALSE;
+                $result['message'] = 'API connection error';
+                http_response_code(500);
+            } else {
+                http_response_code($httpCode);
+                $this->output->set_content_type('application/json')->set_output($response);
+                return;
+            }
+            curl_close($ch);
+        } else {
+            $result['status'] = FALSE;
+            $result['message'] = 'unauthorized access';
+            http_response_code(401);
+        }
+        $this->output->set_content_type('application/json')->set_output(json_encode($result));
+    }
+
+    public function EatAppReservations() {
+        $token = $this->input->get_request_header('Authorization');
+        if($this->apikey == $token) {
+            $rawData = $this->input->raw_input_stream;
+            $jsonData = json_decode($rawData, true);
+
+            $url = 'https://api.eat-sandbox.co/concierge/v2/reservations';
+
+            // Get restaurant ID for header
+            $restaurantId = isset($jsonData['restaurant_id']) ? $jsonData['restaurant_id'] : '';
+
+            $headers = $this->getEatAppHeaders();
+            if ($restaurantId) {
+                $headers[] = 'X-Restaurant-ID: ' . $restaurantId;
+            }
+
+            $ch = curl_init();
+            curl_setopt($ch, CURLOPT_URL, $url);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_POST, true);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($jsonData));
+            curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+
+            $response = curl_exec($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+
+            if (curl_errno($ch)) {
+                $result['status'] = FALSE;
+                $result['message'] = 'API connection error';
+                http_response_code(500);
+            } else {
+                http_response_code($httpCode);
+                $this->output->set_content_type('application/json')->set_output($response);
+                return;
+            }
+            curl_close($ch);
+        } else {
+            $result['status'] = FALSE;
+            $result['message'] = 'unauthorized access';
+            http_response_code(401);
+        }
+        $this->output->set_content_type('application/json')->set_output(json_encode($result));
+    }
 }
