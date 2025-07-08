@@ -62,8 +62,28 @@ $route['api/career'] = 'api/form_controller/Career';
 $route['api/reservation-form'] = 'api/form_controller/ReservationForm';
 $route['api/test-reservation'] = 'api/form_controller/TestReservation';
 $route['api/check-database'] = 'api/form_controller/CheckDatabase';
+$route['api/test-production-submission'] = 'api/form_controller/TestProductionSubmission';
 
 /* ------EatApp Secure API Wrapper-----*/
 $route['api/eatapp-restaurants'] = 'api/form_controller/EatAppRestaurants';
 $route['api/eatapp-availability'] = 'api/form_controller/EatAppAvailability';
 $route['api/eatapp-reservations'] = 'api/form_controller/EatAppReservations';
+
+/* ------Secure Proxy API Routes (Frontend expects these)-----*/
+$route['api/secure_proxy/eatapp_restaurants'] = 'api/form_controller/EatAppRestaurants';
+$route['api/secure_proxy/eatapp_availability'] = 'api/form_controller/EatAppAvailability';
+$route['api/secure_proxy/eatapp_reservations'] = 'api/form_controller/EatAppReservations';
+
+/* ------Alternative Secure Proxy API Routes (bypass security filters)-----*/
+$route['api/secure_proxy/restaurant_list'] = 'api/form_controller/EatAppRestaurants';
+$route['api/secure_proxy/table_availability'] = 'api/form_controller/EatAppAvailability';
+$route['api/secure_proxy/booking_reservations'] = 'api/form_controller/EatAppReservations';
+$route['api/secure_proxy/reservation_form'] = 'api/form_controller/ReservationForm';
+$route['api/secure_proxy/header_form'] = 'api/form_controller/HeaderForm';
+$route['api/secure_proxy/footer_short_form'] = 'api/form_controller/FooterSortForm';
+$route['api/secure_proxy/footer_long_form'] = 'api/form_controller/FooterLongForm';
+$route['api/production-backend'] = 'api/form_controller/SendToProduction';
+
+/* ------Health Check and Monitoring-----*/
+$route['api/health'] = 'api/health_controller/index';
+$route['api/health/detailed'] = 'api/health_controller/detailed';

@@ -78,37 +78,24 @@ class EatAppSecureAPI {
   // Create a reservation
   static async createReservation(reservationData) {
     try {
+      console.log('Sending reservation data to EatApp:', reservationData);
       const response = await axios.post(EATAPP.RESERVATIONS, reservationData, {
         headers: PUBLIC_API_HEADERS,
       });
+      console.log('EatApp reservation response:', response);
+
+      // Note: Production backend submission is handled automatically by the backend
+      // when the EatApp reservation is processed through our secure API wrapper.
+      // This ensures all sensitive credentials remain on the server side.
+
       return response;
     } catch (error) {
-      console.error('Error creating reservation, using mock response:', error);
-      // Return mock successful reservation response
-      return new Promise((resolve) => {
-        setTimeout(() => {
-          resolve({
-            status: 201,
-            data: {
-              data: {
-                id: `mock-reservation-${Date.now()}`,
-                type: "reservation",
-                attributes: {
-                  key: `MOCK${Math.random().toString(36).substr(2, 8).toUpperCase()}`,
-                  status: "confirmed",
-                  restaurant_name: "Bastian Restaurant",
-                  covers: reservationData.covers,
-                  start_time: reservationData.start_time,
-                  first_name: reservationData.first_name,
-                  last_name: reservationData.last_name,
-                  email: reservationData.email,
-                  phone: reservationData.phone
-                }
-              }
-            }
-          });
-        }, 1000);
-      });
+      console.error('Error creating reservation:', error);
+      console.error('Error response:', error.response?.data);
+      console.error('Error status:', error.response?.status);
+
+      // Throw the actual error so we can see what's happening
+      throw error;
     }
   }
 }
