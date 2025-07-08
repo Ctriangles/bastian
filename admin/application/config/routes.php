@@ -60,3 +60,5 @@ $route['api/footer-sort-form'] = 'api/form_controller/FooterSortForm';
 $route['api/footer-long-form'] = 'api/form_controller/FooterLongForm';
 $route['api/career'] = 'api/form_controller/Career';
 $route['api/reservation-form'] = 'api/form_controller/ReservationForm';
+$route['api/test'] = 'api/form_controller/test';
+$route['api/get-restaurants'] = 'api/form_controller/getRestaurants';

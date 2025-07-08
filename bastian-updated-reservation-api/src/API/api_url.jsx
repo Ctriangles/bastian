@@ -1,30 +1,21 @@
+// API Configuration - Secure implementation
+// EatApp credentials are now hidden in backend for security
 //const API_URL = "";
-// const API_URL = "http://localhost/bastian";
+// const API_URL = "http://localhost/bastian-admin"; // For local development
 // const API_URL = "https://bastianhospitality.com/admin";
 const API_URL = "https://bastian.ninetriangles.com/admin";
 const APP_URL = "https://bastianhospitality.com/";
-const EATAPP_CONCIERGE_API_URL = 'https://api.eat-sandbox.co/concierge/v2';
-const EatAppAuthKey = `Bearer eyJhbGciOiJIUzI1NiJ9.eyJleHAiOjE4OTIwNzM2MDAsImlhdCI6MTc0NTgxOTQ0NSwiaWQiOiJkOWZkNTI0Mi04YmQzLTQ1NDYtODNlNy1jZjU1NzY5MDI0MTIiLCJtb2RlbCI6IkNvbmNpZXJnZSIsImp0aSI6IjFkYWU1ZjYyOWM3M2VmOTU3M2U0IiwiYnkiOiJhbGlAZWF0YXBwLmNvIn0.ZCEiRP1gqPNvJEFYDVCk1uA6o0MSD2pzXu88eGh8xt0`;
-const EatAppGroupID = '4bcc6bdd-765b-4486-83ab-17c175dc3910';
-
-const EATAPP_API_HEADERS = {
-  'Authorization': EatAppAuthKey,
-  'X-Group-ID': EatAppGroupID,
-  'Accept': 'application/json',
-  'Content-Type': 'application/json'
-};
 
 
+// API Endpoints - All external API calls are now proxied through secure backend
 const Apis = {
   Headerform: `${API_URL}/api/header-form`,
   FooterSortForm: `${API_URL}/api/footer-sort-form`,
   FooterLongForm: `${API_URL}/api/footer-long-form`,
   CareerForm: `${API_URL}/api/career`,
   ReservationForm: `${API_URL}/api/reservation-form`,
+  // Secure EatApp wrapper endpoints (credentials hidden in backend)
+  EatAppRestaurants: `${API_URL}/api/get-restaurants`,
 };
-const EATAPP = {
-  AVAILABILITY: `${EATAPP_CONCIERGE_API_URL}/availability`,
-  RESERVATIONS: `${EATAPP_CONCIERGE_API_URL}/reservations`,
-  RESTAURANTS: `${EATAPP_CONCIERGE_API_URL}/restaurants`,
-}
-export { API_URL, Apis, APP_URL, EATAPP, EATAPP_API_HEADERS };
+
+export { API_URL, Apis, APP_URL };

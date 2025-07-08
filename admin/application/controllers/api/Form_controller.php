@@ -1,7 +1,7 @@
 <?php  
 defined('BASEPATH') OR exit('No direct script access allowed');
  
-class form_controller extends CI_Controller { 
+class form_controller extends CI_Controller {
     public function __construct() {  
         parent::__construct(); 
         date_default_timezone_set('Asia/Kolkata');
@@ -243,6 +243,7 @@ class form_controller extends CI_Controller {
         $this->output->set_content_type('application/json')->set_output(json_encode($result));
     }
     function sendDataAfterInsert($formData) {
+        // Send to existing system
         $url = "https://edyne.dytel.co.in/postbastianreservation.asp?SourceId=71&SourcePwd=!Online@2024&OutletCode=".urlencode($formData->restaurant_id)."&OutletPwd=BASTIANDEMO&CustomerName=" . urlencode($formData->full_name) . "&CustomerMobile=" . urlencode($formData->contact_number) . "&CountryCode=91&ReservationDate=" . urlencode(date('d-M-Y', strtotime($formData->booking_date))) . "&ReservationTime=00:00&Covers=" . urlencode($formData->pax) . "&Occasion=&Remarks=&AdvancePaid=0&DiscountPercentage=15&DiscountAmount=0";
         $ch = curl_init();
         curl_setopt($ch, CURLOPT_URL, $url);
@@ -252,6 +253,100 @@ class form_controller extends CI_Controller {
             echo 'Error: ' . curl_error($ch);
         }
         curl_close($ch);
+
+        // Send to EatApp sandbox
+        $this->sendToEatApp($formData);
+
         return $response;
+    }
+
+    // Secure EatApp API wrapper - credentials hidden from frontend
+    private function sendToEatApp($formData) {
+        $eatAppUrl = 'https://api.eat-sandbox.co/concierge/v2/reservations';
+        $eatAppAuthKey = 'Bearer eyJhbGciOiJIUzI1NiJ9.eyJleHAiOjE4OTIwNzM2MDAsImlhdCI6MTc0NTgxOTQ0NSwiaWQiOiJkOWZkNTI0Mi04YmQzLTQ1NDYtODNlNy1jZjU1NzY5MDI0MTIiLCJtb2RlbCI6IkNvbmNpZXJnZSIsImp0aSI6IjFkYWU1ZjYyOWM3M2VmOTU3M2U0IiwiYnkiOiJhbGlAZWF0YXBwLmNvIn0.ZCEiRP1gqPNvJEFYDVCk1uA6o0MSD2pzXu88eGh8xt0';
+        $eatAppGroupID = '4bcc6bdd-765b-4486-83ab-17c175dc3910';
+
+        $reservationData = array(
+            'restaurant_id' => $formData->restaurant_id,
+            'date' => $formData->booking_date,
+            'time' => '19:00', // Default time
+            'party_size' => (int)$formData->pax,
+            'customer' => array(
+                'name' => $formData->full_name,
+                'email' => $formData->email_id,
+                'phone' => $formData->contact_number
+            ),
+            'notes' => 'Reservation from Bastian website'
+        );
+
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $eatAppUrl);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($reservationData));
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, array(
+            'Authorization: ' . $eatAppAuthKey,
+            'X-Group-ID: ' . $eatAppGroupID,
+            'Content-Type: application/json',
+            'Accept: application/json'
+        ));
+
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+
+        if (curl_errno($ch)) {
+            error_log('EatApp API Error: ' . curl_error($ch));
+        } else {
+            error_log('EatApp API Response (HTTP ' . $httpCode . '): ' . $response);
+        }
+
+        curl_close($ch);
+        return $response;
+    }
+
+    // Test endpoint
+    public function test() {
+        $result['status'] = true;
+        $result['message'] = 'Test endpoint working';
+        $this->output->set_content_type('application/json')->set_output(json_encode($result));
+    }
+
+    // Secure wrapper for EatApp restaurants API
+    public function getRestaurants() {
+        $token = $this->input->get_request_header('Authorization');
+        if($this->apikey == $token) {
+            $eatAppUrl = 'https://api.eat-sandbox.co/concierge/v2/restaurants';
+            $eatAppAuthKey = 'Bearer eyJhbGciOiJIUzI1NiJ9.eyJleHAiOjE4OTIwNzM2MDAsImlhdCI6MTc0NTgxOTQ0NSwiaWQiOiJkOWZkNTI0Mi04YmQzLTQ1NDYtODNlNy1jZjU1NzY5MDI0MTIiLCJtb2RlbCI6IkNvbmNpZXJnZSIsImp0aSI6IjFkYWU1ZjYyOWM3M2VmOTU3M2U0IiwiYnkiOiJhbGlAZWF0YXBwLmNvIn0.ZCEiRP1gqPNvJEFYDVCk1uA6o0MSD2pzXu88eGh8xt0';
+            $eatAppGroupID = '4bcc6bdd-765b-4486-83ab-17c175dc3910';
+
+            $ch = curl_init();
+            curl_setopt($ch, CURLOPT_URL, $eatAppUrl);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_HTTPHEADER, array(
+                'Authorization: ' . $eatAppAuthKey,
+                'X-Group-ID: ' . $eatAppGroupID,
+                'Accept: application/json'
+            ));
+
+            $response = curl_exec($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+
+            if (curl_errno($ch)) {
+                $result['status'] = false;
+                $result['message'] = 'Failed to fetch restaurants';
+                http_response_code(500);
+            } else {
+                $result = json_decode($response, true);
+                http_response_code($httpCode);
+            }
+
+            curl_close($ch);
+        } else {
+            $result['status'] = false;
+            $result['message'] = 'unauthorized access';
+            http_response_code(401);
+        }
+
+        $this->output->set_content_type('application/json')->set_output(json_encode($result));
     }
 }
