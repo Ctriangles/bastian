@@ -1,5 +1,5 @@
 import axios from "axios";
-import { EATAPP, SECURE_API_HEADERS } from './api_url.jsx';
+import { EATAPP, PUBLIC_API_HEADERS } from './api_url.jsx';
 
 // Mock data for development/fallback - matching the expected API format
 const MOCK_AVAILABILITY = {
@@ -26,7 +26,7 @@ class EatAppSecureAPI {
   static async getRestaurants() {
     try {
       const response = await axios.get(EATAPP.RESTAURANTS, {
-        headers: SECURE_API_HEADERS,
+        headers: PUBLIC_API_HEADERS,
       });
       return response.data;
     } catch (error) {
@@ -39,7 +39,7 @@ class EatAppSecureAPI {
   static async getAvailability(requestData) {
     try {
       const response = await axios.post(EATAPP.AVAILABILITY, requestData, {
-        headers: SECURE_API_HEADERS,
+        headers: PUBLIC_API_HEADERS,
       });
       return response.data;
     } catch (error) {
@@ -79,7 +79,7 @@ class EatAppSecureAPI {
   static async createReservation(reservationData) {
     try {
       const response = await axios.post(EATAPP.RESERVATIONS, reservationData, {
-        headers: SECURE_API_HEADERS,
+        headers: PUBLIC_API_HEADERS,
       });
       return response;
     } catch (error) {

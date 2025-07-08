@@ -1,14 +1,10 @@
 import axios from "axios";
-import { Apis } from './api_url.jsx';
+import { Apis, PUBLIC_API_HEADERS } from './api_url.jsx';
 
 const HeaderForms = async (formvalue) => {
-    const apiKey = '123456789';
     try {
         const response = await axios.post(Apis.Headerform, { formvalue }, {
-            headers: {
-                'Authorization': apiKey,
-                'Content-Type': 'application/json',
-            },
+            headers: PUBLIC_API_HEADERS,
         });
         //console.log(response.data);
         return response.data;
@@ -18,13 +14,9 @@ const HeaderForms = async (formvalue) => {
     }
 };
 const FooterSortForms = async (formvalue) => {
-    const apiKey = '123456789';
     try {
         const response = await axios.post(Apis.FooterSortForm, { formvalue }, {
-            headers: {
-                'Authorization': apiKey,
-                'Content-Type': 'application/json',
-            },
+            headers: PUBLIC_API_HEADERS,
         });
         //console.log(response.data);
         return response.data;
@@ -34,14 +26,10 @@ const FooterSortForms = async (formvalue) => {
     }
 };
 const FooterLongForms = async (formvalue) => {
-    const apiKey = '123456789';
     try {
         console.log({formvalue});
         const response = await axios.post(Apis.FooterLongForm, { formvalue }, {
-            headers: {
-                'Authorization': apiKey,
-                'Content-Type': 'application/json',
-            },
+            headers: PUBLIC_API_HEADERS,
         });
         //console.log(response.data);
         return response.data;
@@ -51,13 +39,9 @@ const FooterLongForms = async (formvalue) => {
     }
 };
 const ReservationForm = async (formvalue) => {
-    const apiKey = '123456789';
     try {
         const response = await axios.post(Apis.ReservationForm, { formvalue }, {
-            headers: {
-                'Authorization': apiKey,
-                'Content-Type': 'application/json',
-            },
+            headers: PUBLIC_API_HEADERS,
         });
         console.log(response.data);
         return response.data;
