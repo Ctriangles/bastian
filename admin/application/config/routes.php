@@ -55,10 +55,11 @@ $route['404_override'] = '';
 $route['translate_uri_dashes'] = FALSE;
 
 /* ------API-----*/
-$route['api/header-form'] = 'api/form_controller/HeaderForm';
-$route['api/footer-sort-form'] = 'api/form_controller/FooterSortForm';
-$route['api/footer-long-form'] = 'api/form_controller/FooterLongForm';
-$route['api/career'] = 'api/form_controller/Career';
-$route['api/reservation-form'] = 'api/form_controller/ReservationForm';
-$route['api/test'] = 'api/form_controller/test';
-$route['api/get-restaurants'] = 'api/form_controller/getRestaurants';
+$route['api/header-form'] = 'api/Form_controller/HeaderForm';
+$route['api/footer-sort-form'] = 'api/Form_controller/FooterSortForm';
+$route['api/footer-long-form'] = 'api/Form_controller/FooterLongForm';
+$route['api/career'] = 'api/Form_controller/Career';
+$route['api/reservation-form'] = 'api/Form_controller/ReservationForm';
+$route['api/test'] = 'api/Form_controller/test';
+$route['api/get-restaurants'] = 'api/Form_controller/getRestaurants';
+$route['api/get-availability'] = 'api/Form_controller/getAvailability';

@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Frontend API</title>
+</head>
+<body>
+    <h1>Test Reservation API</h1>
+    <button onclick="testReservationAPI()">Test Reservation Form API</button>
+    <div id="result"></div>
+
+    <script>
+        async function testReservationAPI() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = 'Testing...';
+
+            const reservationData = {
+                restaurant_id: "74e1a9cc-bad1-4217-bab5-4264a987cd7f",
+                booking_date: "2025-07-10",
+                booking_time: "19:30",
+                full_name: "Frontend Test User",
+                email: "frontend@test.com",
+                mobile: "1234567890",
+                pax: "2",
+                age: "30",
+                pincode: "400001",
+                comments: "Testing from frontend"
+            };
+
+            try {
+                console.log('Sending request to:', 'http://localhost/bastian-admin/api/reservation-form');
+                console.log('Request data:', { formvalue: reservationData });
+
+                const response = await fetch('http://localhost/bastian-admin/api/reservation-form', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': '123456789'
+                    },
+                    body: JSON.stringify({ formvalue: reservationData })
+                });
+
+                console.log('Response status:', response.status);
+                console.log('Response headers:', response.headers);
+
+                const data = await response.json();
+                console.log('Response data:', data);
+
+                resultDiv.innerHTML = `
+                    <h3>Response:</h3>
+                    <pre>${JSON.stringify(data, null, 2)}</pre>
+                `;
+            } catch (error) {
+                console.error('Error:', error);
+                resultDiv.innerHTML = `
+                    <h3>Error:</h3>
+                    <pre>${error.message}</pre>
+                `;
+            }
+        }
+    </script>
+</body>
+</html>
