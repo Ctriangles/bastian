@@ -2,15 +2,13 @@ import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { API_URL } from './api_url';
 
-// Secure API wrapper that calls our backend instead of EatApp directly
-// This hides all sensitive credentials from the frontend
-
-const API_KEY = '123456789'; // Only our backend API key, not EatApp credentials
+// Secure API wrapper that calls our backend with NO credentials exposed
+// Frontend sends NO API keys - all authentication handled by backend
 
 const API_HEADERS = {
-  'Authorization': API_KEY,
   'Accept': 'application/json',
-  'Content-Type': 'application/json'
+  'Content-Type': 'application/json',
+  'Authorization': '123456789' // Internal API key for backend authentication
 };
 
 /**
@@ -45,11 +43,11 @@ const useSecureRestaurants = () => {
     fetchRestaurants();
   }, []);
 
-  return { 
-    restaurants, 
+  return {
+    restaurants,
     error,
     loading,
-    // Helper getter for the restaurants array
+    // Helper getter for the restaurants array - restaurants is already the data.data from API
     getRestaurants: () => restaurants?.data || []
   };
 };

@@ -327,8 +327,12 @@ const ReservationsEatApp = () => {
                         className="w-full p-2 border border-text-primary bg-[#101010]"
                         disabled={restaurantsLoading}
                       >
-                        <option value="">Select Restaurant</option>
-                        {getRestaurants().map(restaurant => (
+                        <option value="">
+                          {restaurantsLoading ? "Loading restaurants..." :
+                           restaurantsError ? "Failed to fetch restaurants" :
+                           "Select Restaurant"}
+                        </option>
+                        {!restaurantsLoading && !restaurantsError && getRestaurants().map(restaurant => (
                           <option key={restaurant.id} value={restaurant.id}>
                             {restaurant.attributes.name}
                           </option>
