@@ -23,7 +23,22 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 | a PHP script and you can easily do that on your own.
 |
 */
-$config['base_url'] = 'http://localhost/bastian-admin';
+// Auto-detect environment and set base URL accordingly
+if (isset($_SERVER['HTTP_HOST'])) {
+    $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https://' : 'http://';
+    $host = $_SERVER['HTTP_HOST'];
+
+    if ($host === 'localhost' || strpos($host, '127.0.0.1') !== false) {
+        // Local development
+        $config['base_url'] = 'http://localhost/bastian-admin';
+    } else {
+        // Production
+        $config['base_url'] = $protocol . $host . '/admin';
+    }
+} else {
+    // Fallback for CLI or other contexts
+    $config['base_url'] = 'https://bastian.ninetriangles.com/admin';
+}
 $config['enable_cors'] = TRUE;
 /*
 |--------------------------------------------------------------------------

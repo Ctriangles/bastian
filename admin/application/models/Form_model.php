@@ -8,19 +8,21 @@ class form_model extends CI_Model
     }
     public function AllEnquiry()
     {
-        $condition = "status ='1'";
-        $this->db->select('*');
+        $condition = "tbl_forms_data.status ='1'";
+        $this->db->select('tbl_forms_data.*, tbl_restaurants.name as restaurant_name');
         $this->db->from("tbl_forms_data");
-        $this->db->order_by("id", "DESC");
+        $this->db->join('tbl_restaurants', 'tbl_restaurants.eatapp_id = tbl_forms_data.restaurant_id', 'left');
+        $this->db->order_by("tbl_forms_data.id", "DESC");
         $this->db->where($condition);
         return $this->db->get()->result();
     }
     public function TrashEnquiry()
     {
-        $condition = "status ='2'";
-        $this->db->select('*');
+        $condition = "tbl_forms_data.status ='2'";
+        $this->db->select('tbl_forms_data.*, tbl_restaurants.name as restaurant_name');
         $this->db->from("tbl_forms_data");
-        $this->db->order_by("id", "DESC");
+        $this->db->join('tbl_restaurants', 'tbl_restaurants.eatapp_id = tbl_forms_data.restaurant_id', 'left');
+        $this->db->order_by("tbl_forms_data.id", "DESC");
         $this->db->where($condition);
         return $this->db->get()->result();
     }
@@ -173,20 +175,21 @@ class form_model extends CI_Model
     }
     public function AllEnquiryByDateRange($start_date = null, $end_date = null)
     {
-        $condition = "status ='1'";
-        $this->db->select('*');
+        $condition = "tbl_forms_data.status ='1'";
+        $this->db->select('tbl_forms_data.*, tbl_restaurants.name as restaurant_name');
         $this->db->from("tbl_forms_data");
+        $this->db->join('tbl_restaurants', 'tbl_restaurants.eatapp_id = tbl_forms_data.restaurant_id', 'left');
         $this->db->where($condition);
-        $this->db->order_by("id", "DESC");
+        $this->db->order_by("tbl_forms_data.id", "DESC");
 
         if (!empty($start_date)) {
             if (!empty($end_date) && $start_date === $end_date) {
-                $this->db->where('insert_date >=', $start_date . ' 00:00:00');
-                $this->db->where('insert_date <=', $end_date . ' 23:59:59');
+                $this->db->where('tbl_forms_data.insert_date >=', $start_date . ' 00:00:00');
+                $this->db->where('tbl_forms_data.insert_date <=', $end_date . ' 23:59:59');
             } else {
-                $this->db->where('insert_date >=', $start_date);
+                $this->db->where('tbl_forms_data.insert_date >=', $start_date);
                 if (!empty($end_date)) {
-                    $this->db->where('insert_date <=', $end_date);
+                    $this->db->where('tbl_forms_data.insert_date <=', $end_date);
                 }
             }
         }

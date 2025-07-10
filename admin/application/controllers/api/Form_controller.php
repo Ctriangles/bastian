@@ -67,6 +67,11 @@ class form_controller extends CI_Controller {
                 'edit_date' => $this->currentTime
             );
             //print_r($data); die;
+
+            // COMMENTED OUT: Database saving moved to new EatApp system to prevent duplicate entries
+            // The new ReservationEatApp.jsx component now handles both database saving AND EatApp integration
+            // This old system is kept for backward compatibility but database operations are disabled
+            /*
             $AddData = $this->form_model->AddFormDetailsData($data);
             if($AddData == TRUE) {
                 $this->email->from(@$this->site_emailfrom, "Bastian Hospitality");
@@ -85,6 +90,13 @@ class form_controller extends CI_Controller {
                 $result['status'] = FALSE;
                 http_response_code(400);
             }
+            */
+
+            // Return success response for backward compatibility
+            // Frontend will continue to work, but data is now handled by EatApp system
+            $result['status'] = TRUE;
+            $result['message'] = 'Reservation request received. Please use the new reservation system for complete functionality.';
+            http_response_code(200);
         } else {
             $result['status'] = FALSE;
             $result['message'] = 'unauthorized access';
@@ -131,6 +143,11 @@ class form_controller extends CI_Controller {
         if($this->apikey == $token) {
             $rawData = $this->input->raw_input_stream;
             $jsonData = json_decode($rawData);
+
+            // COMMENTED OUT: Database saving moved to new EatApp system to prevent duplicate entries
+            // The new ReservationEatApp.jsx component now handles both database saving AND EatApp integration
+            // This old system is kept for backward compatibility but database operations are disabled
+            /*
             $data = array(
                 'id' => '',
                 'restaurant_id' => $jsonData->formvalue->restaurant_id,
@@ -153,6 +170,12 @@ class form_controller extends CI_Controller {
                 $result['status'] = FALSE;
                 http_response_code(400);
             }
+            */
+
+            // Return success without database operation to maintain API compatibility
+            $result['status'] = TRUE;
+            $result['message'] = 'Reservation handled by new EatApp system';
+            http_response_code(200);
         } else {
             $result['status'] = FALSE;
             $result['message'] = 'unauthorized access';
@@ -242,16 +265,16 @@ class form_controller extends CI_Controller {
         }
         $this->output->set_content_type('application/json')->set_output(json_encode($result));
     }
-    function sendDataAfterInsert($formData) {
-        // $url = "https://edyne.dytel.co.in/postbastianreservation.asp?SourceId=71&SourcePwd=!Online@2024&OutletCode=".urlencode($formData->restaurant_id)."&OutletPwd=BASTIANDEMO&CustomerName=" . urlencode($formData->full_name) . "&CustomerMobile=" . urlencode($formData->contact_number) . "&CountryCode=91&ReservationDate=" . urlencode(date('d-M-Y', strtotime($formData->booking_date))) . "&ReservationTime=00:00&Covers=" . urlencode($formData->pax) . "&Occasion=&Remarks=&AdvancePaid=0&DiscountPercentage=15&DiscountAmount=0";
-        $ch = curl_init();
-        curl_setopt($ch, CURLOPT_URL, $url);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        $response = curl_exec($ch);
-        if (curl_errno($ch)) {
-            echo 'Error: ' . curl_error($ch);
-        }
-        curl_close($ch);
-        return $response;
-    }
+    // function sendDataAfterInsert($formData) {
+    //     $url = "https://edyne.dytel.co.in/postbastianreservation.asp?SourceId=71&SourcePwd=!Online@2024&OutletCode=".urlencode($formData->restaurant_id)."&OutletPwd=BASTIANDEMO&CustomerName=" . urlencode($formData->full_name) . "&CustomerMobile=" . urlencode($formData->contact_number) . "&CountryCode=91&ReservationDate=" . urlencode(date('d-M-Y', strtotime($formData->booking_date))) . "&ReservationTime=00:00&Covers=" . urlencode($formData->pax) . "&Occasion=&Remarks=&AdvancePaid=0&DiscountPercentage=15&DiscountAmount=0";
+    //     $ch = curl_init();
+    //     curl_setopt($ch, CURLOPT_URL, $url);
+    //     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    //     $response = curl_exec($ch);
+    //     if (curl_errno($ch)) {
+    //         echo 'Error: ' . curl_error($ch);
+    //     }
+    //     curl_close($ch);
+    //     return $response;
+    // }
 }
