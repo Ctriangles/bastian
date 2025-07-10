@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { EATAPP, EATAPP_API_HEADERS } from './api_url';
+// Note: This file is deprecated - use secure-reservation.jsx instead
 
 const API_BASE_URL = 'https://api.eat-sandbox.co/concierge/v2';
 const API_HEADERS = {
@@ -18,9 +18,8 @@ const useRestaurants = () => {
     const fetchRestaurants = async () => {
       try {
         setLoading(true);
-        const response = await axios.get(EATAPP.RESTAURANTS, {
-          headers: EATAPP_API_HEADERS
-        });
+        // This file is deprecated - use secure-reservation.jsx instead
+        throw new Error('This API is deprecated. Use secure-reservation.jsx instead.');
 
         // The API returns data in the format:
         // {

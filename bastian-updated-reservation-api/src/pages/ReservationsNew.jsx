@@ -7,12 +7,12 @@ import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import ReCAPTCHA from "react-google-recaptcha";
 import success from "../assets/logo/success-icon.svg";
-import { useRestaurants } from "../API/user-reservation.jsx";
+// Note: useRestaurants moved to secure-reservation.jsx for security
 import React from "react";
 import { Helmet } from "react-helmet";
 import axios from 'axios';
 import { QRCodeSVG } from 'qrcode.react';
-import { EATAPP, EATAPP_API_HEADERS } from "../API/api_url";
+// Note: EATAPP credentials moved to backend for security
 import ReservationsEatApp from "../components/ReservationEatApp.jsx";
 
 

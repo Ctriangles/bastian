@@ -3,12 +3,9 @@ import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import ReCAPTCHA from "react-google-recaptcha";
 import success from "../assets/logo/success-icon.svg";
-import { useRestaurants } from "../API/user-reservation.jsx";
+import { useSecureRestaurants, checkAvailability, createFullReservation } from "../API/secure-reservation.jsx";
 import React from "react";
-import axios from 'axios';
 import { QRCodeSVG } from 'qrcode.react';
-import { EATAPP, EATAPP_API_HEADERS } from "../API/api_url";
-import { ReservationForm } from "../API/reservation";
 
 
 const ReservationsEatApp = () => {
@@ -34,11 +31,11 @@ const ReservationsEatApp = () => {
   });
 
   // API data states
-  const { restaurants, error: restaurantsError, loading: restaurantsLoading, getRestaurants } = useRestaurants();
+  const { restaurants, error: restaurantsError, loading: restaurantsLoading, getRestaurants } = useSecureRestaurants();
   const [availableSlots, setAvailableSlots] = useState([]);
   const [reservationSuccess, setReservationSuccess] = useState(false);
   const [response, setResponse] = useState(null);
-  const restaurantAddress = ""; // not provided by api, but it should be based on the restaurant selection 
+  const restaurantAddress = ""; // not provided by api, but it should be based on the restaurant selection
 
   // Field-specific errors state
   const [fieldErrors, setFieldErrors] = useState({
@@ -55,7 +52,6 @@ const ReservationsEatApp = () => {
       return;
     }
 
-
     try {
       setFormData(preState => ({
         ...preState,
@@ -63,21 +59,19 @@ const ReservationsEatApp = () => {
       }));
 
       setLoading(true);
-      const response = await axios.post(
-        EATAPP.AVAILABILITY,
-        {
-          restaurant_id: formData.restaurant_id,
-          earliest_start_time: formData.booking_date.toISOString().split('T')[0] + "T12:00:00",
-          latest_start_time: formData.booking_date.toISOString().split('T')[0] + "T22:00:00",
-          covers: parseInt(formData.covers),
-        },
-        { headers: EATAPP_API_HEADERS }
-      );
 
-      const data = response.data;
-      if (data.data?.attributes?.available) {
+      const availabilityData = {
+        restaurant_id: formData.restaurant_id,
+        earliest_start_time: formData.booking_date.toISOString().split('T')[0] + "T12:00:00",
+        latest_start_time: formData.booking_date.toISOString().split('T')[0] + "T22:00:00",
+        covers: parseInt(formData.covers),
+      };
+
+      const result = await checkAvailability(availabilityData);
+
+      if (result.success && result.data?.data?.attributes?.available) {
         // Format the time slots to be more user-friendly
-        const formattedSlots = data.data.attributes.available.map(time => ({
+        const formattedSlots = result.data.data.attributes.available.map(time => ({
           value: time, // Keep original ISO time
           display: new Date(time).toLocaleTimeString('en-US', {
             hour: 'numeric',
@@ -88,6 +82,9 @@ const ReservationsEatApp = () => {
         setAvailableSlots(formattedSlots);
       } else {
         setAvailableSlots([]);
+        if (result.error) {
+          setError(result.error);
+        }
       }
     } catch (error) {
       console.error('Availability fetch error:', error);
@@ -102,68 +99,47 @@ const ReservationsEatApp = () => {
 
     try {
       setLoading(true);
-      const responseBackend = await ReservationForm({
+
+      // Prepare reservation data for our secure API
+      const reservationData = {
         restaurant_id: formData.restaurant_id,
-        booking_date: formData.booking_date,
+        booking_date: formData.booking_date.toISOString().split('T')[0],
+        booking_time: formData.start_time.split('T')[1],
         full_name: formData.first_name + " " + formData.last_name,
+        first_name: formData.first_name,
+        last_name: formData.last_name,
         email: formData.email,
         mobile: formData.phone,
         pax: formData.covers,
         age: formData.agerange,
         pincode: formData.pincode,
         comments: formData.notes,
-        booking_time: formData.start_time.split('T')[1],
-      });
-      console.log({responseBackend});
-      const response = await axios.post(
-        EATAPP.RESERVATIONS,
-        {
-          restaurant_id: formData.restaurant_id,
-          covers: parseInt(formData.covers),
-          start_time: formData.start_time,
-          first_name: formData.first_name,
-          last_name: formData.last_name,
-          email: formData.email,
-          phone: formData.phone,
-          notes: formData.notes,
-          referrer_tag: "concierge",
-          terms_and_conditions_accepted: true,
-          marketing_accepted: true
-        },
-        { headers: { ...EATAPP_API_HEADERS, 'X-Restaurant-ID': formData.restaurant_id } }
-      );
+        start_time: formData.start_time
+      };
 
-      if (response.status === 201 && response.data?.data?.attributes?.key) {
-        setResponse(response);
+      const result = await createFullReservation(reservationData);
+
+      if (result.success && result.data?.data?.attributes?.key) {
+        // Create response object in the expected format
+        setResponse({
+          data: result.data,
+          status: 201
+        });
         setReservationSuccess(true);
       } else {
-        setError("Failed to make reservation");
+        // Handle validation errors
+        if (result.validations) {
+          const validationErrors = result.validations
+            .map(v => `${v.key}: ${v.message}`)
+            .join(', ');
+          setError(validationErrors);
+        } else {
+          setError(result.message || "Failed to make reservation");
+        }
       }
     } catch (error) {
       console.error('Reservation error:', error);
-
-      // Handle different error status codes
-      if (error.response) {
-        switch (error.response.status) {
-          case 400: // Missing partner
-            setError("Please select a restaurant to make a reservation");
-            break;
-          case 422: // Validation error
-            if (error.response.data?.validations) {
-              const validationErrors = error.response.data.validations
-                .map(v => `${v.key}: ${v.message}`)
-                .join(', ');
-              setError(validationErrors);
-            } else {
-              setError("Please check your reservation details");
-            }
-            break;
-          default:
-            setError("Failed to submit reservation. Please try again.");
-        }
-      } else {
-        setError("Failed to submit reservation. Please try again.");
-      }
+      setError("Failed to submit reservation. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -351,8 +327,12 @@ const ReservationsEatApp = () => {
                         className="w-full p-2 border border-text-primary bg-[#101010]"
                         disabled={restaurantsLoading}
                       >
-                        <option value="">Select Restaurant</option>
-                        {getRestaurants().map(restaurant => (
+                        <option value="">
+                          {restaurantsLoading ? "Loading restaurants..." :
+                           restaurantsError ? "Failed to fetch restaurants" :
+                           "Select Restaurant"}
+                        </option>
+                        {!restaurantsLoading && !restaurantsError && getRestaurants().map(restaurant => (
                           <option key={restaurant.id} value={restaurant.id}>
                             {restaurant.attributes.name}
                           </option>
