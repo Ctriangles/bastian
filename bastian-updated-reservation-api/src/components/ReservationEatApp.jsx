@@ -35,6 +35,7 @@ const ReservationsEatApp = () => {
   const [availableSlots, setAvailableSlots] = useState([]);
   const [reservationSuccess, setReservationSuccess] = useState(false);
   const [response, setResponse] = useState(null);
+  const [paymentUrl, setPaymentUrl] = useState(null);
   const restaurantAddress = ""; // not provided by api, but it should be based on the restaurant selection
 
   // Field-specific errors state
@@ -125,6 +126,11 @@ const ReservationsEatApp = () => {
           data: result.data,
           status: 201
         });
+
+        // Check if payment URL exists in the response
+        const paymentUrlFromResponse = result.data?.data?.attributes?.payment_url;
+        setPaymentUrl(paymentUrlFromResponse || null);
+        
         setReservationSuccess(true);
       } else {
         // Handle validation errors
@@ -588,13 +594,29 @@ const ReservationsEatApp = () => {
           <div className="px-4 text-grey-700 center">
             <div className="grid place-items-center text-sm">
               <img
-                alt="Reservation confirmed!"
+                alt={paymentUrl ? "Payment Required" : "Reservation confirmed!"}
                 src={success}
                 className="w-24 h-24"
               />
-              <span className="mt-0 mb-3 text-xl font-bold">
-                Reservation confirmed!
-              </span>
+              {paymentUrl ? (
+                <>
+                  <span className="mt-0 mb-3 text-xl font-bold">
+                    Complete Your Reservation
+                  </span>
+                  <a 
+                    href={paymentUrl}
+                    className="px-6 py-3 bg-[#B4A074] text-white rounded-md hover:bg-[#8C7851] transition-colors mb-3 text-center"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    Click here to complete the payment
+                  </a>
+                </>
+              ) : (
+                <span className="mt-0 mb-3 text-xl font-bold">
+                  Reservation confirmed!
+                </span>
+              )}
               <span>
                 {formData.booking_date.toLocaleDateString('en-US', {
                   weekday: 'long',
