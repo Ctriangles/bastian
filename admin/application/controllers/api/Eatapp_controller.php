@@ -494,8 +494,20 @@ class Eatapp_controller extends CI_Controller {
             'created_at' => date('Y-m-d H:i:s')
         );
 
+        // Debug: Log the data being inserted
+        error_log("Storing reservation locally: " . json_encode($data));
+
         $this->db->insert('eatapp_reservations', $data);
-        return $this->db->insert_id();
+        
+        // Check for database errors
+        if ($this->db->affected_rows() > 0) {
+            $insert_id = $this->db->insert_id();
+            error_log("Reservation stored successfully with ID: " . $insert_id);
+            return $insert_id;
+        } else {
+            error_log("Failed to store reservation. DB Error: " . $this->db->error()['message']);
+            return false;
+        }
     }
 
     /**
@@ -512,10 +524,20 @@ class Eatapp_controller extends CI_Controller {
             $data['eatapp_reservation_key'] = $eatapp_response['data']['attributes']['key'];
         }
 
+        // Debug: Log the update data
+        error_log("Updating reservation ID {$local_id} with status: {$status}");
+
         $this->db->where('id', $local_id);
         $this->db->update('eatapp_reservations', $data);
-
-        return true;
+        
+        // Check for database errors
+        if ($this->db->affected_rows() >= 0) {
+            error_log("Reservation updated successfully. Affected rows: " . $this->db->affected_rows());
+            return true;
+        } else {
+            error_log("Failed to update reservation. DB Error: " . $this->db->error()['message']);
+            return false;
+        }
     }
 
     /**
@@ -679,5 +701,43 @@ class Eatapp_controller extends CI_Controller {
             'http_code' => $http_code,
             'error' => null
         );
+    }
+
+    /**
+     * ADMIN ONLY: Get all reservations from our database for debugging
+     */
+    public function get_reservations() {
+        $token = $this->input->get_request_header('Authorization');
+        if($this->apikey == $token) {
+            try {
+                $this->db->select('*');
+                $this->db->from('eatapp_reservations');
+                $this->db->order_by('created_at', 'DESC');
+                $this->db->limit(10); // Get last 10 reservations
+                $query = $this->db->get();
+
+                if($query->num_rows() > 0) {
+                    $result['status'] = true;
+                    $result['data'] = $query->result_array();
+                    $result['count'] = $query->num_rows();
+                    http_response_code(200);
+                } else {
+                    $result['status'] = false;
+                    $result['message'] = 'No reservations found';
+                    http_response_code(404);
+                }
+            } catch (Exception $e) {
+                $result['status'] = false;
+                $result['message'] = 'Error fetching reservations';
+                $result['error'] = $e->getMessage();
+                http_response_code(500);
+            }
+        } else {
+            $result['status'] = false;
+            $result['message'] = 'Unauthorized access';
+            http_response_code(401);
+        }
+
+        $this->output->set_content_type('application/json')->set_output(json_encode($result));
     }
 }

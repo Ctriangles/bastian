@@ -483,11 +483,11 @@ const ReservationsEatApp = () => {
                       weekday: 'long',
                       month: 'long',
                       day: 'numeric'
-                    })}, at {new Date(formData.start_time).toLocaleTimeString('en-US', {
+                    })}, at {formData.start_time ? new Date(formData.start_time).toLocaleTimeString('en-US', {
                       hour: 'numeric',
                       minute: '2-digit',
                       hour12: true
-                    })}
+                    }) : 'Time not set'}
                   </span>
                 </div>
                 <div className="user-number">
@@ -638,19 +638,16 @@ const ReservationsEatApp = () => {
               {paymentUrl ? (
                 <>
                   <span className="mt-0 mb-3 text-xl font-bold text-red-600">
-                    Payment Required
+                    To Confirm Your Seat
                   </span>
-                  <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
-                    <p className="text-sm text-red-700 mb-3">
-                      A payment of $20.00 USD is required to complete your reservation.
-                    </p>
+                  <div className="mb-4">
                     <a 
                       href={paymentUrl}
-                      className="px-8 py-4 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors text-center font-semibold text-lg block"
+                      className="px-6 py-3 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors text-center font-semibold text-base block"
                       target="_blank"
                       rel="noopener noreferrer"
                     >
-                      🚀 Complete Payment Now
+                      MAKE A PAYMENT
                     </a>
                   </div>
                 </>
@@ -659,11 +656,6 @@ const ReservationsEatApp = () => {
                   <span className="mt-0 mb-3 text-xl font-bold">
                     Reservation confirmed!
                   </span>
-                  <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                    <p className="text-sm text-yellow-700">
-                      💡 Payment may be required. Check your email for payment instructions.
-                    </p>
-                  </div>
                 </>
               )}
               <span>
@@ -671,11 +663,15 @@ const ReservationsEatApp = () => {
                   weekday: 'long',
                   month: 'long',
                   day: 'numeric'
-                })}, at {new Date(formData.start_time).toLocaleTimeString('en-US', {
+                })}, at {response.data.data.attributes.start_time ? new Date(response.data.data.attributes.start_time).toLocaleTimeString('en-US', {
                   hour: 'numeric',
                   minute: '2-digit',
                   hour12: true
-                })}
+                }) : (formData.start_time ? new Date(formData.start_time).toLocaleTimeString('en-US', {
+                  hour: 'numeric',
+                  minute: '2-digit',
+                  hour12: true
+                }) : 'Time not set')}
               </span>
               <span className="pt-1">
                 {formData.covers} {parseInt(formData.covers) === 1 ? 'person' : 'people'}
@@ -685,16 +681,17 @@ const ReservationsEatApp = () => {
                 Eat ID: <span className="font-semibold text-custom-primary">{response.data.data.attributes.key}</span>
               </div>
               
-              {/* Debug info - remove this in production */}
-              {process.env.NODE_ENV === 'development' && (
+              {/* Debug info - commented out as requested */}
+              {/* {process.env.NODE_ENV === 'development' && (
                 <div className="mt-4 p-3 bg-gray-100 rounded text-xs">
                   <p><strong>Debug Info:</strong></p>
                   <p>Payment URL: {paymentUrl ? '✅ Found' : '❌ Not found'}</p>
                   {paymentUrl && <p>URL: {paymentUrl}</p>}
                 </div>
-              )}
+              )} */}
 
-              <span className="my-6 mx-10 text-center qr-code">
+              {/* QR Code - commented out as requested */}
+              {/* <span className="my-6 mx-10 text-center qr-code">
                 <QRCodeSVG
                   value={`com.eatapp://${response.data.data.attributes.key}`}
                   size={128}
@@ -702,7 +699,7 @@ const ReservationsEatApp = () => {
                   includeMargin={false}
                   className="mx-auto"
                 />
-              </span>
+              </span> */}
 
               <div className="my-8">
                 <span className="block text-center font-semibold text-lg">
@@ -739,7 +736,7 @@ const ReservationsEatApp = () => {
                   className=" bg-black text-white py-2 px-10  rounded-md flex items-center space-x-2 h-12"
                   style={{ backgroundColor: 'transparent !important', display: 'flex' }}
                   onClick={() => {
-                    const shareText = `I've just made a reservation at ${getRestaurants().find(r => r.id === formData.restaurant_id)?.attributes.name}! Details: ${formData.covers} people, ${formData.booking_date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })} @ ${new Date(formData.start_time).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}, ${getRestaurants().find(r => r.id === formData.restaurant_id)?.attributes.name}, ${restaurantAddress}`;
+                    const shareText = `I've just made a reservation at ${getRestaurants().find(r => r.id === formData.restaurant_id)?.attributes.name}! Details: ${formData.covers} people, ${formData.booking_date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })} @ ${response.data.data.attributes.start_time ? new Date(response.data.data.attributes.start_time).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) : (formData.start_time ? new Date(formData.start_time).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) : 'Time not set')}, ${getRestaurants().find(r => r.id === formData.restaurant_id)?.attributes.name}, ${restaurantAddress}`;
                     navigator.share({
                       title: `Reservation at ${getRestaurants().find(r => r.id === formData.restaurant_id)?.attributes.name}`,
                       text: shareText
