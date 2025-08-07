@@ -9,7 +9,7 @@ class form_controller extends CI_Controller {
         $this->apikey = '123456789';
         header('Access-Control-Allow-Origin: *');
         header('Access-Control-Allow-Methods: GET, POST, OPTIONS, PUT, DELETE');
-        header('Access-Control-Allow-Headers: Content-Type, Authorization');
+        header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Request-Type, X-Client-Version, X-Platform');
         if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
             header('HTTP/1.1 204 No Content');
             exit;
@@ -69,20 +69,56 @@ class form_controller extends CI_Controller {
             //print_r($data); die;
             $AddData = $this->form_model->AddFormDetailsData($data);
             if($AddData == TRUE) {
-                $this->email->from(@$this->site_emailfrom, "Bastian Hospitality");
-                $this->email->to(@$this->site_emailto);
-                $this->email->reply_to($data['email_id']);
-                $this->email->subject("Bastian Hospitality Reservation Form | ".$data['full_name']);
-                $results['message'] = $this->form_model->ReservationdataById($AddData);
-                $body = $this->load->view('email_template/contactform',$results,TRUE);
-                $this->email->message($body);
-                $this->email->set_newline("\r\n");
-                $this->email->send();
-                $this->sendDataAfterInsert($results['message']);
-                $result['status'] = TRUE;
-                http_response_code(200);
+                // Now create reservation in EatApp
+                try {
+                    $eatapp_data = array(
+                        'restaurant_id' => $jsonData->formvalue->restaurant_id,
+                        'covers' => intval($jsonData->formvalue->pax),
+                        'start_time' => $jsonData->formvalue->booking_date . 'T13:00:00Z', // Use lunch time which should be available
+                        'first_name' => explode(' ', $jsonData->formvalue->full_name)[0],
+                        'last_name' => count(explode(' ', $jsonData->formvalue->full_name)) > 1 ? implode(' ', array_slice(explode(' ', $jsonData->formvalue->full_name), 1)) : '',
+                        'email' => $jsonData->formvalue->email,
+                        'phone' => $jsonData->formvalue->mobile,
+                        'notes' => ''
+                    );
+                    
+                    // Call EatApp API
+                    $eatapp_response = $this->create_eatapp_reservation($eatapp_data);
+                    
+                    if($eatapp_response['success']) {
+                        // Send email notification
+                        $this->email->from(@$this->site_emailfrom, "Bastian Hospitality");
+                        $this->email->to(@$this->site_emailto);
+                        $this->email->reply_to($data['email_id']);
+                        $this->email->subject("Bastian Hospitality Reservation Form | ".$data['full_name']);
+                        $results['message'] = $this->form_model->ReservationdataById($AddData);
+                        $body = $this->load->view('email_template/contactform',$results,TRUE);
+                        $this->email->message($body);
+                        $this->email->set_newline("\r\n");
+                        $this->email->send();
+                        $this->sendDataAfterInsert($results['message']);
+                        
+                        $result['status'] = TRUE;
+                        $result['message'] = 'Reservation created successfully';
+                        $result['eatapp_data'] = $eatapp_response['data'];
+                        $result['payment_url'] = $eatapp_response['payment_url'];
+                        $result['payment_required'] = $eatapp_response['payment_required'];
+                        http_response_code(200);
+                    } else {
+                        $result['status'] = FALSE;
+                        $result['message'] = 'Failed to create reservation in EatApp';
+                        $result['error'] = $eatapp_response['error'];
+                        http_response_code(500);
+                    }
+                } catch (Exception $e) {
+                    $result['status'] = FALSE;
+                    $result['message'] = 'Error creating reservation in EatApp';
+                    $result['error'] = $e->getMessage();
+                    http_response_code(500);
+                }
             } else {
                 $result['status'] = FALSE;
+                $result['message'] = 'Failed to save reservation locally';
                 http_response_code(400);
             }
         } else {
@@ -131,6 +167,8 @@ class form_controller extends CI_Controller {
         if($this->apikey == $token) {
             $rawData = $this->input->raw_input_stream;
             $jsonData = json_decode($rawData);
+            
+            // Save to local database first
             $data = array(
                 'id' => '',
                 'restaurant_id' => $jsonData->formvalue->restaurant_id,
@@ -145,12 +183,48 @@ class form_controller extends CI_Controller {
                 'comments' => $jsonData->formvalue->comments,
                 'edit_date' => $this->currentTime
             );
+            
             $AddData = $this->form_model->AddFormDetailsData($data);
+            
             if($AddData == TRUE) {
-                $result['status'] = TRUE;
-                http_response_code(200);
+                // Now create reservation in EatApp
+                try {
+                    $eatapp_data = array(
+                        'restaurant_id' => $jsonData->formvalue->restaurant_id,
+                        'covers' => intval($jsonData->formvalue->pax),
+                        'start_time' => $jsonData->formvalue->booking_date . 'T' . $jsonData->formvalue->booking_time,
+                        'first_name' => explode(' ', $jsonData->formvalue->full_name)[0],
+                        'last_name' => count(explode(' ', $jsonData->formvalue->full_name)) > 1 ? implode(' ', array_slice(explode(' ', $jsonData->formvalue->full_name), 1)) : '',
+                        'email' => $jsonData->formvalue->email,
+                        'phone' => $jsonData->formvalue->mobile,
+                        'notes' => isset($jsonData->formvalue->comments) ? $jsonData->formvalue->comments : ''
+                    );
+                    
+                    // Call EatApp API
+                    $eatapp_response = $this->create_eatapp_reservation($eatapp_data);
+                    
+                    if($eatapp_response['success']) {
+                        $result['status'] = TRUE;
+                        $result['message'] = 'Reservation created successfully';
+                        $result['eatapp_data'] = $eatapp_response['data'];
+                        $result['payment_url'] = $eatapp_response['payment_url'];
+                        $result['payment_required'] = $eatapp_response['payment_required'];
+                        http_response_code(200);
+                    } else {
+                        $result['status'] = FALSE;
+                        $result['message'] = 'Failed to create reservation in EatApp';
+                        $result['error'] = $eatapp_response['error'];
+                        http_response_code(500);
+                    }
+                } catch (Exception $e) {
+                    $result['status'] = FALSE;
+                    $result['message'] = 'Error creating reservation in EatApp';
+                    $result['error'] = $e->getMessage();
+                    http_response_code(500);
+                }
             } else {
                 $result['status'] = FALSE;
+                $result['message'] = 'Failed to save reservation locally';
                 http_response_code(400);
             }
         } else {
@@ -180,20 +254,56 @@ class form_controller extends CI_Controller {
             );
             $AddData = $this->form_model->AddFormDetailsData($data);
             if($AddData == TRUE) {
-                $this->email->from(@$this->site_emailfrom, "Bastian Hospitality");
-                $this->email->to(@$this->site_emailto);
-                $this->email->reply_to($data['email_id']);
-                $this->email->subject("Bastian Hospitality Reservation Form | ".$data['full_name']);
-                $results['message'] = $this->form_model->ReservationdataById($AddData);
-                $body = $this->load->view('email_template/contactform',$results,TRUE);
-                $this->email->message($body);
-                $this->email->set_newline("\r\n");
-                $this->email->send();
-                $this->sendDataAfterInsert($results['message']);
-                $result['status'] = TRUE;
-                http_response_code(200);
+                // Now create reservation in EatApp
+                try {
+                    $eatapp_data = array(
+                        'restaurant_id' => $getshortdata->restaurant_id,
+                        'covers' => intval($getshortdata->pax),
+                        'start_time' => $getshortdata->booking_date . 'T12:00:00Z', // Default time if not specified
+                        'first_name' => explode(' ', $jsonData->formvalue->full_name)[0],
+                        'last_name' => count(explode(' ', $jsonData->formvalue->full_name)) > 1 ? implode(' ', array_slice(explode(' ', $jsonData->formvalue->full_name), 1)) : '',
+                        'email' => $jsonData->formvalue->email,
+                        'phone' => $jsonData->formvalue->mobile,
+                        'notes' => ''
+                    );
+                    
+                    // Call EatApp API
+                    $eatapp_response = $this->create_eatapp_reservation($eatapp_data);
+                    
+                    if($eatapp_response['success']) {
+                        // Send email notification
+                        $this->email->from(@$this->site_emailfrom, "Bastian Hospitality");
+                        $this->email->to(@$this->site_emailto);
+                        $this->email->reply_to($data['email_id']);
+                        $this->email->subject("Bastian Hospitality Reservation Form | ".$data['full_name']);
+                        $results['message'] = $this->form_model->ReservationdataById($AddData);
+                        $body = $this->load->view('email_template/contactform',$results,TRUE);
+                        $this->email->message($body);
+                        $this->email->set_newline("\r\n");
+                        $this->email->send();
+                        $this->sendDataAfterInsert($results['message']);
+                        
+                        $result['status'] = TRUE;
+                        $result['message'] = 'Reservation created successfully';
+                        $result['eatapp_data'] = $eatapp_response['data'];
+                        $result['payment_url'] = $eatapp_response['payment_url'];
+                        $result['payment_required'] = $eatapp_response['payment_required'];
+                        http_response_code(200);
+                    } else {
+                        $result['status'] = FALSE;
+                        $result['message'] = 'Failed to create reservation in EatApp';
+                        $result['error'] = $eatapp_response['error'];
+                        http_response_code(500);
+                    }
+                } catch (Exception $e) {
+                    $result['status'] = FALSE;
+                    $result['message'] = 'Error creating reservation in EatApp';
+                    $result['error'] = $e->getMessage();
+                    http_response_code(500);
+                }
             } else {
                 $result['status'] = FALSE;
+                $result['message'] = 'Failed to save reservation locally';
                 http_response_code(400);
             }
         } else {
@@ -253,5 +363,167 @@ class form_controller extends CI_Controller {
         }
         curl_close($ch);
         return $response;
+    }
+    
+    /**
+     * Create reservation in EatApp API
+     */
+    private function create_eatapp_reservation($jsonData) {
+        // EatApp API Configuration
+        $eatapp_api_url = 'https://api.eat-sandbox.co/concierge/v2';
+        $eatapp_auth_key = 'Bearer eyJhbGciOiJIUzI1NiJ9.eyJleHAiOjE4OTIwNzM2MDAsImlhdCI6MTc0NTgxOTQ0NSwiaWQiOiJkOWZkNTI0Mi04YmQzLTQ1NDYtODNlNy1jZjU1NzY5MDI0MTIiLCJtb2RlbCI6IkNvbmNpZXJnZSIsImp0aSI6IjFkYWU1ZjYyOWM3M2VmOTU3M2U0IiwiYnkiOiJhbGlAZWF0YXBwLmNvIn0.ZCEiRP1gqPNvJEFYDVCk1uA6o0MSD2pzXu88eGh8xt0';
+        $eatapp_group_id = '4bcc6bdd-765b-4486-83ab-17c175dc3910';
+        
+        $api_headers = array(
+            'Authorization: ' . $eatapp_auth_key,
+            'X-Group-ID: ' . $eatapp_group_id,
+            'Accept: application/json',
+            'Content-Type: application/json'
+        );
+        
+        try {
+            error_log("create_eatapp_reservation called with data: " . json_encode($jsonData));
+            
+            // Prepare reservation data - start with basic format
+            $postData = array(
+                'restaurant_id' => $jsonData['restaurant_id'],
+                'covers' => intval($jsonData['covers']),
+                'start_time' => $jsonData['start_time'],
+                'first_name' => $jsonData['first_name'],
+                'last_name' => $jsonData['last_name'],
+                'email' => $jsonData['email'],
+                'phone' => $jsonData['phone'],
+                'notes' => isset($jsonData['notes']) ? $jsonData['notes'] : '',
+                'referrer_tag' => 'concierge',
+                'terms_and_conditions_accepted' => true,
+                'marketing_accepted' => true
+            );
+
+            // Add restaurant-specific header
+            $headers = $api_headers;
+            $headers[] = 'X-Restaurant-ID: ' . $jsonData['restaurant_id'];
+
+            error_log("create_eatapp_reservation - POST data: " . json_encode($postData));
+            $response = $this->make_curl_request($eatapp_api_url . '/reservations', 'POST', $postData, $headers);
+            error_log("create_eatapp_reservation - response: " . json_encode($response));
+            
+            if($response['success']) {
+                $responseData = json_decode($response['data'], true);
+                
+                if($response['http_code'] == 201 && isset($responseData['data']['attributes']['key'])) {
+                    // Extract payment URL from response
+                    $payment_url = $this->extract_payment_url($responseData);
+                    
+                    return array(
+                        'success' => true,
+                        'data' => $responseData,
+                        'payment_url' => $payment_url,
+                        'payment_required' => $payment_url ? true : false
+                    );
+                                    } else {
+                        // Check for specific error codes from EatApp
+                        $error_code = null;
+                        $error_message = 'Failed to create reservation in EatApp';
+                        
+                        if(isset($responseData['error_code'])) {
+                            $error_code = $responseData['error_code'];
+                            $error_message = $responseData['error_message'] ?? $error_message;
+                        }
+                        
+                        return array(
+                            'success' => false,
+                            'error' => $error_code ?: 'Failed to create reservation in EatApp',
+                            'error_code' => $error_code,
+                            'error_message' => $error_message,
+                            'data' => $responseData
+                        );
+                    }
+            } else {
+                return array(
+                    'success' => false,
+                    'error' => $response['error'],
+                    'http_code' => $response['http_code']
+                );
+            }
+        } catch (Exception $e) {
+            return array(
+                'success' => false,
+                'error' => $e->getMessage()
+            );
+        }
+    }
+    
+    /**
+     * Extract payment widget URL from EatApp response
+     */
+    private function extract_payment_url($responseData) {
+        $payment_url = null;
+        
+        // Look for payment_widget_url in included payments array (the real location)
+        if(isset($responseData['included'])) {
+            foreach($responseData['included'] as $included) {
+                if($included['type'] === 'payment' && isset($included['attributes']['payment_widget_url'])) {
+                    $payment_url = $included['attributes']['payment_widget_url'];
+                    break;
+                }
+            }
+        }
+        // Look for payment_widget_url in relationships (fallback)
+        elseif(isset($responseData['data']['relationships']['payments']['data']['attributes']['payment_widget_url'])) {
+            $payment_url = $responseData['data']['relationships']['payments']['data']['attributes']['payment_widget_url'];
+        }
+        // Fallback to other possible locations
+        elseif(isset($responseData['data']['attributes']['payment_widget_url'])) {
+            $payment_url = $responseData['data']['attributes']['payment_widget_url'];
+        }
+        elseif(isset($responseData['data']['attributes']['payment_url'])) {
+            $payment_url = $responseData['data']['attributes']['payment_url'];
+        }
+        elseif(isset($responseData['payment_url'])) {
+            $payment_url = $responseData['payment_url'];
+        }
+        
+        return $payment_url;
+    }
+
+    /**
+     * Make CURL request to EatApp API
+     */
+    private function make_curl_request($url, $method = 'GET', $data = null, $custom_headers = null) {
+        $ch = curl_init();
+
+        curl_setopt($ch, CURLOPT_URL, $url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, $custom_headers);
+
+        if($method === 'POST') {
+            curl_setopt($ch, CURLOPT_POST, true);
+            if($data) {
+                curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+            }
+        }
+
+        $response = curl_exec($ch);
+        $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $error = curl_error($ch);
+
+        curl_close($ch);
+
+        if($error) {
+            return array(
+                'success' => false,
+                'error' => $error,
+                'http_code' => $http_code,
+                'data' => null
+            );
+        }
+
+        return array(
+            'success' => true,
+            'data' => $response,
+            'http_code' => $http_code,
+            'error' => null
+        );
     }
 }

@@ -3,9 +3,14 @@ import { useState, useEffect } from "react";
 import { FaArrowRight } from "react-icons/fa";
 import { IoMdClose } from "react-icons/io";
 import { FooterSortForms, FooterLongForms } from "../API/reservation";
+import { useSecureRestaurants } from "../API/secure-reservation.jsx";
 
 export default function Reservation({ col }) {
   const [showModal, setShowModal] = useState(false);
+  
+  // Fetch restaurants from secure API
+  const { restaurants, error: restaurantsError, loading: restaurantsLoading, getRestaurants } = useSecureRestaurants();
+  
   const handleShowModal = () => {
     setShowModal(!showModal);
   };
@@ -128,11 +133,17 @@ export default function Reservation({ col }) {
       <form className="w-full" onSubmit={handleSubmit}>
         <div className={`${col ? "flex-col" : "flex-row"} w-full flex gap-10 items-center justify-between md:items-center px-0 lg:px-8`}>
           <div className="form-group w-full custom-icon relative">
-            <select name="restaurant_id" className="bg-[#101010] text-white border-2 w-full max-w-[350px] p-4 px-4 text-[16px] md:text-[24px] appearance-none" value={formData.restaurant_id} onChange={handleChange} required>
-              <option value="">Select Restaurant</option>
-              <option value="43383004">Bastian At The Top</option>
-              <option value="98725763">Bastian Bandra</option>
-              <option value="92788130">Bastian Garden City</option>
+            <select name="restaurant_id" className="bg-[#101010] text-white border-2 w-full max-w-[350px] p-4 px-4 text-[16px] md:text-[24px] appearance-none" value={formData.restaurant_id} onChange={handleChange} required disabled={restaurantsLoading}>
+              <option value="">
+                {restaurantsLoading ? "Loading restaurants..." :
+                 restaurantsError ? "Failed to fetch restaurants" :
+                 "Select Restaurant"}
+              </option>
+              {!restaurantsLoading && !restaurantsError && getRestaurants().map(restaurant => (
+                <option key={restaurant.id} value={restaurant.id}>
+                  {restaurant.attributes.name}
+                </option>
+              ))}
             </select>
           </div>
           <div className="form-group w-full custom-icon calender relative">

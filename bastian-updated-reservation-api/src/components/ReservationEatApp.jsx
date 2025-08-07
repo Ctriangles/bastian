@@ -100,6 +100,7 @@ const ReservationsEatApp = () => {
 
     try {
       setLoading(true);
+      setError(""); // Clear any previous errors
 
       // Prepare reservation data for our secure API
       const reservationData = {
@@ -127,14 +128,46 @@ const ReservationsEatApp = () => {
           status: 201
         });
 
-        // Check if payment URL exists in the response
-        const paymentUrlFromResponse = result.data?.data?.attributes?.payment_url;
+        // Check if payment URL exists in the response (updated API structure)
+        const paymentUrlFromResponse = result.payment_url || 
+                                      result.data?.payment_url || 
+                                      result.data?.data?.relationships?.payments?.data?.attributes?.payment_widget_url ||
+                                      result.data?.data?.attributes?.payment_widget_url ||
+                                      result.data?.data?.attributes?.payment_url;
         setPaymentUrl(paymentUrlFromResponse || null);
+        
+        // Log the full response for debugging
+        console.log('Full reservation response:', result);
+        console.log('Payment URL found:', paymentUrlFromResponse);
+        console.log('Payment URL path checked:', {
+          direct: result.payment_url,
+          data_payment_url: result.data?.payment_url,
+          relationships_widget: result.data?.data?.relationships?.payments?.data?.attributes?.payment_widget_url,
+          attributes_widget: result.data?.data?.attributes?.payment_widget_url,
+          attributes_payment: result.data?.data?.attributes?.payment_url
+        });
         
         setReservationSuccess(true);
       } else {
-        // Handle validation errors
-        if (result.validations) {
+        // Debug: Log the error details
+        console.log('Reservation failed. Error details:', {
+          success: result.success,
+          message: result.message,
+          error: result.error,
+          data: result.data
+        });
+        
+        // Handle specific error cases
+        if (result.error === 'time_unavailable' || result.error === 'time_unavailable_for_reservation') {
+          setError("The selected time slot is no longer available. Please go back and select a different time.");
+          // Clear the selected time to force user to reselect
+          setFormData(prev => ({
+            ...prev,
+            start_time: ''
+          }));
+        } else if (result.error === 'guest_rate_limited' || result.message?.includes('Too many bookings')) {
+          setError("You have already made a reservation with this email address. Please use a different email or contact us for assistance.");
+        } else if (result.validations) {
           const validationErrors = result.validations
             .map(v => `${v.key}: ${v.message}`)
             .join(', ');
@@ -276,6 +309,10 @@ const ReservationsEatApp = () => {
   const handlePrevStep = () => {
     setCurrentStep(prev => prev - 1);
     setError("");
+    // Refresh availability when going back to step 1
+    if (formData.restaurant_id && formData.booking_date) {
+      fetchAvailability();
+    }
   };
 
   // Show error if restaurants fetch fails
@@ -600,22 +637,34 @@ const ReservationsEatApp = () => {
               />
               {paymentUrl ? (
                 <>
-                  <span className="mt-0 mb-3 text-xl font-bold">
-                    Complete Your Reservation
+                  <span className="mt-0 mb-3 text-xl font-bold text-red-600">
+                    Payment Required
                   </span>
-                  <a 
-                    href={paymentUrl}
-                    className="px-6 py-3 bg-[#B4A074] text-white rounded-md hover:bg-[#8C7851] transition-colors mb-3 text-center"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    Click here to complete the payment
-                  </a>
+                  <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+                    <p className="text-sm text-red-700 mb-3">
+                      A payment of $20.00 USD is required to complete your reservation.
+                    </p>
+                    <a 
+                      href={paymentUrl}
+                      className="px-8 py-4 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors text-center font-semibold text-lg block"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      🚀 Complete Payment Now
+                    </a>
+                  </div>
                 </>
               ) : (
-                <span className="mt-0 mb-3 text-xl font-bold">
-                  Reservation confirmed!
-                </span>
+                <>
+                  <span className="mt-0 mb-3 text-xl font-bold">
+                    Reservation confirmed!
+                  </span>
+                  <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                    <p className="text-sm text-yellow-700">
+                      💡 Payment may be required. Check your email for payment instructions.
+                    </p>
+                  </div>
+                </>
               )}
               <span>
                 {formData.booking_date.toLocaleDateString('en-US', {
@@ -635,6 +684,15 @@ const ReservationsEatApp = () => {
               <div className="mt-6">
                 Eat ID: <span className="font-semibold text-custom-primary">{response.data.data.attributes.key}</span>
               </div>
+              
+              {/* Debug info - remove this in production */}
+              {process.env.NODE_ENV === 'development' && (
+                <div className="mt-4 p-3 bg-gray-100 rounded text-xs">
+                  <p><strong>Debug Info:</strong></p>
+                  <p>Payment URL: {paymentUrl ? '✅ Found' : '❌ Not found'}</p>
+                  {paymentUrl && <p>URL: {paymentUrl}</p>}
+                </div>
+              )}
 
               <span className="my-6 mx-10 text-center qr-code">
                 <QRCodeSVG

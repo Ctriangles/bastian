@@ -14,10 +14,10 @@ class Eatapp_controller extends CI_Controller {
         $this->currentTime = date( 'Y-m-d H:i:s', time () );
         $this->apikey = '123456789';
         
-        // CORS headers
+        // CORS headers - Updated to allow obfuscated headers
         header('Access-Control-Allow-Origin: *');
         header('Access-Control-Allow-Methods: GET, POST, OPTIONS, PUT, DELETE');
-        header('Access-Control-Allow-Headers: Content-Type, Authorization');
+        header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Request-Type, X-Client-Version, X-Platform');
         if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
             header('HTTP/1.1 204 No Content');
             exit;
@@ -37,24 +37,35 @@ class Eatapp_controller extends CI_Controller {
     }
     
     /**
-     * Get list of restaurants from DATABASE (not EatApp directly)
-     * This prevents frontend from seeing real-time API calls
+     * Get list of restaurants from EatApp API (real-time)
+     * Secure proxy endpoint - credentials hidden from frontend
      */
     public function restaurants() {
         $token = $this->input->get_request_header('Authorization');
         if($this->apikey == $token) {
             try {
-                // Get restaurants from our database instead of EatApp
-                $restaurants = $this->get_restaurants_from_db();
+                // Fetch restaurants directly from EatApp API
+                $url = $this->eatapp_api_url . '/restaurants';
+                $response = $this->make_curl_request($url, 'GET');
 
-                if($restaurants) {
-                    $result['status'] = true;
-                    $result['data'] = $restaurants;
-                    http_response_code(200);
+                if($response['success']) {
+                    $eatapp_data = json_decode($response['data'], true);
+                    
+                    if($eatapp_data && isset($eatapp_data['data'])) {
+                        $result['status'] = true;
+                        $result['data'] = $eatapp_data;
+                        http_response_code(200);
+                    } else {
+                        $result['status'] = false;
+                        $result['message'] = 'Invalid response from EatApp API';
+                        http_response_code(500);
+                    }
                 } else {
                     $result['status'] = false;
-                    $result['message'] = 'No restaurants found';
-                    http_response_code(404);
+                    $result['message'] = 'Failed to fetch restaurants from EatApp';
+                    $result['error'] = $response['error'];
+                    $result['http_code'] = $response['http_code'];
+                    http_response_code($response['http_code'] ?: 500);
                 }
             } catch (Exception $e) {
                 $result['status'] = false;
@@ -73,8 +84,9 @@ class Eatapp_controller extends CI_Controller {
 
     /**
      * ADMIN ONLY: Sync restaurants from EatApp to our database
-     * This should be called periodically via cron job, not from frontend
+     * DEPRECATED: Now fetching directly from EatApp API
      */
+    /*
     public function sync_restaurants() {
         $token = $this->input->get_request_header('Authorization');
         if($this->apikey == $token) {
@@ -110,6 +122,7 @@ class Eatapp_controller extends CI_Controller {
 
         $this->output->set_content_type('application/json')->set_output(json_encode($result));
     }
+    */
     
     /**
      * Check availability from CACHE first, then EatApp if needed
@@ -214,6 +227,9 @@ class Eatapp_controller extends CI_Controller {
             }
 
             try {
+                // Debug: Log the incoming request data
+                error_log("Incoming reservation request: " . json_encode($jsonData));
+                
                 // STEP 1: Store in our database FIRST (ensures data is never lost)
                 $local_reservation_id = $this->store_reservation_locally($jsonData);
 
@@ -225,10 +241,18 @@ class Eatapp_controller extends CI_Controller {
                     return;
                 }
 
-                // STEP 2: Try to send to EatApp
+                // STEP 2: Try to send to EatApp with full relationships
                 $url = $this->eatapp_api_url . '/reservations';
 
-                // Prepare reservation data
+                // Create payment object first (if needed) - but don't fail if it doesn't work
+                $payment_id = null;
+                try {
+                    $payment_id = $this->create_payment_object(20.00, 'USD');
+                } catch (Exception $e) {
+                    error_log("Payment object creation failed: " . $e->getMessage());
+                }
+
+                // Prepare reservation data - start with basic format
                 $postData = array(
                     'restaurant_id' => $jsonData['restaurant_id'],
                     'covers' => intval($jsonData['covers']),
@@ -248,17 +272,33 @@ class Eatapp_controller extends CI_Controller {
                 $headers[] = 'X-Restaurant-ID: ' . $jsonData['restaurant_id'];
 
                 $response = $this->make_curl_request($url, 'POST', $postData, $headers);
-
+                
+                // Debug: Log the request and response
+                error_log("EatApp API Request: " . json_encode($postData));
+                error_log("EatApp API Response: " . json_encode($response));
+                
                 if($response['success']) {
                     $responseData = json_decode($response['data'], true);
+                    
                     if($response['http_code'] == 201 && isset($responseData['data']['attributes']['key'])) {
                         // STEP 3: Update our database with EatApp response
                         $this->update_reservation_with_eatapp_response($local_reservation_id, $responseData, 'confirmed');
 
+                        // Extract payment URL from response if available
+                        $payment_url = $this->extract_payment_url($responseData);
+                        
                         $result['status'] = true;
                         $result['data'] = $responseData;
                         $result['message'] = 'Reservation created successfully';
                         $result['local_id'] = $local_reservation_id;
+                        
+                        // Add payment URL to response if found
+                        if($payment_url) {
+                            $result['payment_url'] = $payment_url;
+                            $result['payment_required'] = true;
+                            $result['payment_amount'] = 20.00; // Default amount from email
+                        }
+                        
                         http_response_code(201);
                     } else {
                         // EatApp returned error - mark as failed but keep local reservation
@@ -308,9 +348,13 @@ class Eatapp_controller extends CI_Controller {
         $this->output->set_content_type('application/json')->set_output(json_encode($result));
     }
     
+
+    
     /**
      * Get restaurants from our database
+     * DEPRECATED: Now fetching directly from EatApp API
      */
+    /*
     private function get_restaurants_from_db() {
         $this->db->select('*');
         $this->db->from('eatapp_restaurants');
@@ -349,10 +393,13 @@ class Eatapp_controller extends CI_Controller {
 
         return false;
     }
+    */
 
     /**
      * Store restaurants from EatApp into our database
+     * DEPRECATED: Now fetching directly from EatApp API
      */
+    /*
     private function store_restaurants_in_db($eatapp_data) {
         if(!isset($eatapp_data['data'])) return false;
 
@@ -383,6 +430,7 @@ class Eatapp_controller extends CI_Controller {
 
         return true;
     }
+    */
 
     /**
      * Get cached availability from database
@@ -468,6 +516,128 @@ class Eatapp_controller extends CI_Controller {
         $this->db->update('eatapp_reservations', $data);
 
         return true;
+    }
+
+    /**
+     * Extract payment widget URL from EatApp response
+     * This method searches for the payment_widget_url in the response
+     */
+    private function extract_payment_url($responseData) {
+        $payment_url = null;
+        
+        // Look for payment_widget_url in included payments array (the real location)
+        if(isset($responseData['included'])) {
+            foreach($responseData['included'] as $included) {
+                if($included['type'] === 'payment' && isset($included['attributes']['payment_widget_url'])) {
+                    $payment_url = $included['attributes']['payment_widget_url'];
+                    break;
+                }
+            }
+        }
+        // Look for payment_widget_url in relationships (fallback)
+        elseif(isset($responseData['data']['relationships']['payments']['data']['attributes']['payment_widget_url'])) {
+            $payment_url = $responseData['data']['relationships']['payments']['data']['attributes']['payment_widget_url'];
+        }
+        // Fallback to other possible locations
+        elseif(isset($responseData['data']['attributes']['payment_widget_url'])) {
+            $payment_url = $responseData['data']['attributes']['payment_widget_url'];
+        }
+        elseif(isset($responseData['data']['attributes']['payment_url'])) {
+            $payment_url = $responseData['data']['attributes']['payment_url'];
+        }
+        elseif(isset($responseData['data']['attributes']['payment_link'])) {
+            $payment_url = $responseData['data']['attributes']['payment_link'];
+        }
+        elseif(isset($responseData['payment_url'])) {
+            $payment_url = $responseData['payment_url'];
+        }
+        else {
+            // Search recursively through the entire response
+            $payment_url = $this->search_recursive_for_payment_url($responseData);
+        }
+        
+        return $payment_url;
+    }
+    
+    /**
+     * Recursively search for payment URL in nested arrays
+     */
+    private function search_recursive_for_payment_url($data, $path = '') {
+        if(is_array($data)) {
+            foreach($data as $key => $value) {
+                $current_path = $path ? $path . '.' . $key : $key;
+                
+                // Check if this key contains payment-related terms
+                if(strpos(strtolower($key), 'payment') !== false && is_string($value) && filter_var($value, FILTER_VALIDATE_URL)) {
+                    return $value;
+                }
+                
+                // Check if this key contains URL-related terms
+                if((strpos(strtolower($key), 'url') !== false || strpos(strtolower($key), 'link') !== false) && 
+                   is_string($value) && filter_var($value, FILTER_VALIDATE_URL)) {
+                    // Check if it looks like a payment URL
+                    if(strpos($value, 'payment') !== false || strpos($value, 'pay') !== false || strpos($value, 'e-link') !== false) {
+                        return $value;
+                    }
+                }
+                
+                // Check for e-link URLs specifically (like in the email)
+                if(is_string($value) && filter_var($value, FILTER_VALIDATE_URL)) {
+                    if(strpos($value, 'e-link1.eatapp.co') !== false || strpos($value, 'e-link') !== false) {
+                        return $value;
+                    }
+                }
+                
+                // Check for any URL that might be a payment URL
+                if(is_string($value) && filter_var($value, FILTER_VALIDATE_URL)) {
+                    $lowerValue = strtolower($value);
+                    if(strpos($lowerValue, 'ls/click') !== false || strpos($lowerValue, 'upn=') !== false) {
+                        return $value;
+                    }
+                }
+                
+                // Recursively search nested arrays
+                if(is_array($value)) {
+                    $result = $this->search_recursive_for_payment_url($value, $current_path);
+                    if($result) {
+                        return $result;
+                    }
+                }
+            }
+        }
+        
+        return null;
+    }
+    
+    /**
+     * Create a payment object for the reservation
+     */
+    private function create_payment_object($amount = 20.00, $currency = 'USD') {
+        try {
+            $url = $this->eatapp_api_url . '/payments';
+            
+            $postData = array(
+                'amount' => $amount,
+                'currency' => $currency,
+                'description' => "A pre-payment for $amount $currency is required",
+                'gateway' => 'stripe'
+            );
+            
+            $response = $this->make_curl_request($url, 'POST', $postData);
+            
+            if($response['success']) {
+                $paymentData = json_decode($response['data'], true);
+                
+                if(isset($paymentData['data']['id'])) {
+                    return $paymentData['data']['id'];
+                }
+            }
+            
+        } catch (Exception $e) {
+            // Log error but don't fail the reservation
+        }
+        
+        return null;
     }
 
     /**

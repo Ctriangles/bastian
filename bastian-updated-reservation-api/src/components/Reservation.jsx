@@ -10,8 +10,13 @@ import { SiMinutemailer } from "react-icons/si";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import ReCAPTCHA from 'react-google-recaptcha';
+import { useSecureRestaurants } from "../API/secure-reservation.jsx";
 export default function Reservation({ col }) {
   const [showModal, setShowModal] = useState(false);
+  
+  // Fetch restaurants from secure API
+  const { restaurants, error: restaurantsError, loading: restaurantsLoading, getRestaurants } = useSecureRestaurants();
+  
   const handleShowModal = () => {
     setShowModal(!showModal);
   };
@@ -213,13 +218,18 @@ export default function Reservation({ col }) {
               className="bg-[#101010] text-white border-2 w-full max-w-[350px] p-3 px-4 text-[16px] md:text-[24px] appearance-none"
               value={formData.restaurant_id}
               onChange={handleChange}
+              disabled={restaurantsLoading}
             >
-              <option value="">Select Restaurant</option>
-              <option value="43383004">Bastian At The Top</option>
-              <option value="98725763">Bastian Bandra</option>
-              <option value="51191537">Inka by Bastian</option>
-              <option value="10598428">Bastian Empire (Pune)</option>
-              <option value="92788130">Bastian Garden City (Bengaluru)</option>
+              <option value="">
+                {restaurantsLoading ? "Loading restaurants..." :
+                 restaurantsError ? "Failed to fetch restaurants" :
+                 "Select Restaurant"}
+              </option>
+              {!restaurantsLoading && !restaurantsError && getRestaurants().map(restaurant => (
+                <option key={restaurant.id} value={restaurant.id}>
+                  {restaurant.attributes.name}
+                </option>
+              ))}
             </select>
           </div>
           <div className="form-group w-full custom-icon calender relative" style={{ zIndex: "70" }}>
@@ -307,14 +317,18 @@ export default function Reservation({ col }) {
                             }`}
                           value={selectedOption}
                           onChange={handleSlectChange}
-                          disabled
+                          disabled={restaurantsLoading}
                         >
-                          <option value="">Select Restaurant</option>
-                          <option value="43383004">Bastian At The Top</option>
-                          <option value="98725763">Bastian Bandra</option>
-                          <option value="92788130">Bastian Garden City (Bengaluru)</option>
-                          <option value="10598428">Bastian Empire (Pune)</option>
-                          <option value="51191537">Inka by Bastian</option>
+                          <option value="">
+                            {restaurantsLoading ? "Loading restaurants..." :
+                             restaurantsError ? "Failed to fetch restaurants" :
+                             "Select Restaurant"}
+                          </option>
+                          {!restaurantsLoading && !restaurantsError && getRestaurants().map(restaurant => (
+                            <option key={restaurant.id} value={restaurant.id}>
+                              {restaurant.attributes.name}
+                            </option>
+                          ))}
                         </select>
                       </div>
                     </div>

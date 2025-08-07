@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { API_URL } from './api_url';
+import { API_URL, UNIFIED_RESTAURANT_API } from './api_url';
 
 // Secure API wrapper that calls our backend with NO credentials exposed
 // Frontend sends NO API keys - all authentication handled by backend
 
+// SECURE HEADERS: Basic headers for API authentication
 const API_HEADERS = {
   'Accept': 'application/json',
   'Content-Type': 'application/json',
@@ -23,7 +24,7 @@ const useSecureRestaurants = () => {
     const fetchRestaurants = async () => {
       try {
         setLoading(true);
-        const response = await axios.get(`${API_URL}/api/eatapp/restaurants`, {
+        const response = await axios.get(UNIFIED_RESTAURANT_API.RESTAURANTS, {
           headers: API_HEADERS
         });
 
@@ -58,7 +59,7 @@ const useSecureRestaurants = () => {
 const checkAvailability = async (availabilityData) => {
   try {
     const response = await axios.post(
-      `${API_URL}/api/eatapp/availability`,
+      UNIFIED_RESTAURANT_API.AVAILABILITY,
       availabilityData,
       { headers: API_HEADERS }
     );
@@ -92,7 +93,7 @@ const checkAvailability = async (availabilityData) => {
 const createSecureReservation = async (reservationData) => {
   try {
     const response = await axios.post(
-      `${API_URL}/api/eatapp/reservations`,
+      UNIFIED_RESTAURANT_API.RESERVATIONS,
       reservationData,
       { headers: API_HEADERS }
     );
@@ -105,11 +106,17 @@ const createSecureReservation = async (reservationData) => {
         error: null
       };
     } else {
+      // Check for specific error types
+      let errorType = 'unknown';
+      if (response.data.data?.error_code === 'time_unavailable_for_reservation') {
+        errorType = 'time_unavailable';
+      }
+      
       return {
         success: false,
-        data: null,
+        data: response.data.data,
         message: response.data.message || 'Failed to create reservation',
-        error: response.data.error || 'Unknown error',
+        error: errorType,
         validations: response.data.validations || null
       };
     }
@@ -150,10 +157,28 @@ const createSecureReservation = async (reservationData) => {
  */
 const createFullReservation = async (formData) => {
   try {
-    // First, save to our database using existing ReservationForm API
+    console.log('Calling API endpoint:', UNIFIED_RESTAURANT_API.SUBMIT_FORM);
+    console.log('Request data:', { 
+      form_type: 'reservation-form',
+      formvalue: {
+        restaurant_id: formData.restaurant_id,
+        booking_date: formData.booking_date,
+        booking_time: formData.booking_time,
+        full_name: formData.full_name,
+        email: formData.email,
+        mobile: formData.mobile,
+        pax: formData.pax,
+        age: formData.age,
+        pincode: formData.pincode,
+        comments: formData.comments
+      }
+    });
+    
+    // Save to our database and create EatApp reservation in one call
     const backendResponse = await axios.post(
-      `${API_URL}/api/reservation-form`,
+      UNIFIED_RESTAURANT_API.SUBMIT_FORM,
       { 
+        form_type: 'reservation-form',
         formvalue: {
           restaurant_id: formData.restaurant_id,
           booking_date: formData.booking_date,
@@ -170,33 +195,41 @@ const createFullReservation = async (formData) => {
       { headers: API_HEADERS }
     );
 
-    console.log('Backend reservation saved:', backendResponse.data);
+    console.log('Backend reservation response:', backendResponse.data);
 
-    // Then, create reservation in EatApp through our secure proxy
-    const eatappData = {
-      restaurant_id: formData.restaurant_id,
-      covers: parseInt(formData.pax),
-      start_time: formData.start_time,
-      first_name: formData.first_name,
-      last_name: formData.last_name,
-      email: formData.email,
-      phone: formData.mobile,
-      notes: formData.comments || ''
-    };
-
-    const eatappResponse = await createSecureReservation(eatappData);
-
-    return {
-      success: eatappResponse.success,
-      data: eatappResponse.data,
-      message: eatappResponse.message,
-      error: eatappResponse.error,
-      validations: eatappResponse.validations,
-      backendSaved: backendResponse.data.status === true
-    };
+    // The updated reservation-form endpoint now handles both database save and EatApp creation
+    if (backendResponse.data.status === true) {
+      return {
+        success: true,
+        data: backendResponse.data.eatapp_data || backendResponse.data,
+        message: backendResponse.data.message || 'Reservation created successfully',
+        error: null,
+        validations: null,
+        backendSaved: true,
+        payment_url: backendResponse.data.payment_url,
+        payment_required: backendResponse.data.payment_required
+      };
+    } else {
+      // Handle error response from backend
+      console.log('Backend returned error:', backendResponse.data);
+      return {
+        success: false,
+        data: null,
+        message: backendResponse.data.message || 'Failed to create reservation',
+        error: backendResponse.data.error || 'Unknown error',
+        validations: null,
+        backendSaved: false
+      };
+    }
 
   } catch (error) {
     console.error('Full reservation error:', error);
+    console.error('Error details:', {
+      message: error.message,
+      response: error.response?.data,
+      status: error.response?.status,
+      statusText: error.response?.statusText
+    });
     return {
       success: false,
       data: null,

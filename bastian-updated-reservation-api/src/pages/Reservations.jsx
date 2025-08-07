@@ -14,6 +14,7 @@ import "react-datepicker/dist/react-datepicker.css";
 import ReCAPTCHA from "react-google-recaptcha";
 
 import { HeaderForms } from "../API/reservation";
+import { useSecureRestaurants } from "../API/secure-reservation.jsx";
 
 import React from "react";
 import { Helmet } from 'react-helmet';
@@ -27,6 +28,9 @@ const Header = () => {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [recaptchaValue, setRecaptchaValue] = useState(null);
+  
+  // Fetch restaurants from secure API
+  const { restaurants, error: restaurantsError, loading: restaurantsLoading, getRestaurants } = useSecureRestaurants();
   const handleRecaptchaChange = (value) => {
     setRecaptchaValue(value);
   };
@@ -178,15 +182,18 @@ content="Reserve your table at Bastian and enjoy an unforgettable dining experie
                       value={formData.restaurant_id}
                       onChange={handleChange}
                       required
+                      disabled={restaurantsLoading}
                     >
-                      <option value="">Select Restaurant</option>
-                      <option value="43383004">Bastian At The Top</option>
-                      <option value="98725763">Bastian Bandra</option>
-                      <option value="51191537">Inka by Bastian</option>
-                      <option value="10598428">Bastian Empire (Pune)</option>
-                      <option value="92788130">
-                        Bastian Garden City (Bengaluru)
+                      <option value="">
+                        {restaurantsLoading ? "Loading restaurants..." :
+                         restaurantsError ? "Failed to fetch restaurants" :
+                         "Select Restaurant"}
                       </option>
+                      {!restaurantsLoading && !restaurantsError && getRestaurants().map(restaurant => (
+                        <option key={restaurant.id} value={restaurant.id}>
+                          {restaurant.attributes.name}
+                        </option>
+                      ))}
                     </select>
                   </div>
                 </div>

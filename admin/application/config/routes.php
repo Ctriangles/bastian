@@ -60,9 +60,15 @@ $route['api/footer-sort-form'] = 'api/form_controller/FooterSortForm';
 $route['api/footer-long-form'] = 'api/form_controller/FooterLongForm';
 $route['api/career'] = 'api/form_controller/Career';
 $route['api/reservation-form'] = 'api/form_controller/ReservationForm';
-
-/* ------EatApp Secure API (Database-First)-----*/
 $route['api/eatapp/restaurants'] = 'api/eatapp_controller/restaurants';
 $route['api/eatapp/availability'] = 'api/eatapp_controller/availability';
 $route['api/eatapp/reservations'] = 'api/eatapp_controller/create_reservation';
-$route['api/eatapp/sync-restaurants'] = 'api/eatapp_controller/sync_restaurants';
+
+// OBFUSCATED ROUTES - Hide actual API structure from frontend inspection
+$route['api/data/list'] = 'api/eatapp_controller/restaurants';
+$route['api/data/check'] = 'api/eatapp_controller/availability';
+$route['api/data/create'] = 'api/eatapp_controller/create_reservation';
+$route['api/form/submit'] = 'api/form_controller/ReservationForm';
+
+// ULTRA SECURE: Single endpoint that routes all requests internally
+$route['api/secure/data'] = 'api/secure_controller/data';
