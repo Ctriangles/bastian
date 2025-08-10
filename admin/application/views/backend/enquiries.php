@@ -52,12 +52,7 @@
                                     <td><?= $i ?></td>
                                     <td><?= $AllData->full_name ?></td>
                                     <td><?= $AllData->contact_number ?></td>
-                                    <td><?= ($AllData->restaurant_id == '43383004') ? 'Bastian At The Top' : '' ?>
-                                        <?= ($AllData->restaurant_id == '98725763') ? 'Bastian Bandra' : '' ?>
-                                        <?= ($AllData->restaurant_id == '51191537') ? 'Inka By Bastian' : '' ?>
-                                        <?= ($AllData->restaurant_id == '10598428') ? 'Bastian Empire (Pune)' : '' ?>
-                                        <?= ($AllData->restaurant_id == '92788130') ? 'Bastian Garden City (Bengaluru)' : '' ?>
-                                    </td>
+                                    <td><?= $AllData->restaurant_name ?? 'N/A' ?></td>
                                     <td><?= date('d M, Y', strtotime($AllData->booking_date)) . ' ' . date('(h:i A)', strtotime($AllData->booking_time)) ?></td>
                                     <td><?= date('d M, Y (h:i A) ', strtotime($AllData->edit_date)); ?></td>
                                     <?php if (array_search('enquiry_delete', $this->role_list) !== false) { ?>
@@ -76,12 +71,7 @@
                                     <td><?= $i ?></td>
                                     <td><?= $AllData->full_name ?></td>
                                     <td><?= $AllData->contact_number ?></td>
-                                    <td><?= ($AllData->restaurant_id == '43383004') ? 'Bastian At The Top' : '' ?>
-                                        <?= ($AllData->restaurant_id == '98725763') ? 'Bastian Bandra' : '' ?>
-                                        <?= ($AllData->restaurant_id == '51191537') ? 'Inka By Bastian' : '' ?>
-                                        <?= ($AllData->restaurant_id == '10598428') ? 'Bastian Empire (Pune)' : '' ?>
-                                        <?= ($AllData->restaurant_id == '92788130') ? 'Bastian Garden City (Bengaluru)' : '' ?>
-                                    </td>
+                                    <td><?= $AllData->restaurant_name ?? 'N/A' ?></td>
                                     <td><?= date('d M, Y', strtotime($AllData->booking_date)) . ' ' . date('(h:i A)', strtotime($AllData->booking_time)) ?></td>
                                     <td><?= date('d M, Y (h:i A) ', strtotime($AllData->edit_date)); ?></td>
                                     <td>

@@ -1,0 +1,451 @@
+{
+	"info": {
+		"_postman_id": "eatapp-api-collection",
+		"name": "EatApp API Integration Tests",
+		"description": "Complete Postman collection for testing the EatApp API integration with actual API keys and endpoints",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "1. Get Restaurants",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "123456789",
+						"type": "text"
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{base_url}}/restaurants",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"restaurants"
+					]
+				}
+			},
+			"response": [],
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"pm.test(\"Response has restaurants\", function () {",
+							"    const response = pm.response.json();",
+							"    pm.expect(response.status).to.be.true;",
+							"    pm.expect(response.data.data).to.be.an('array');",
+							"    pm.expect(response.data.data.length).to.be.greaterThan(0);",
+							"});",
+							"",
+							"// Store restaurant ID for other tests",
+							"if (pm.response.json().status) {",
+							"    const restaurantId = pm.response.json().data.data[0].id;",
+							"    pm.environment.set(\"restaurant_id\", restaurantId);",
+							"    console.log(\"Restaurant ID stored: \" + restaurantId);",
+							"}"
+						],
+						"type": "text/javascript"
+					}
+				}
+			]
+		},
+		{
+			"name": "2. Check Availability",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "123456789",
+						"type": "text"
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"restaurant_id\": \"{{restaurant_id}}\",\n  \"earliest_start_time\": \"2024-01-15T18:00:00Z\",\n  \"latest_start_time\": \"2024-01-15T22:00:00Z\",\n  \"covers\": 4\n}"
+				},
+				"url": {
+					"raw": "{{base_url}}/availability",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"availability"
+					]
+				}
+			},
+			"response": [],
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"pm.test(\"Response has availability slots\", function () {",
+							"    const response = pm.response.json();",
+							"    pm.expect(response.status).to.be.true;",
+							"    pm.expect(response.data.data).to.be.an('array');",
+							"});",
+							"",
+							"// Store a time slot for reservation test",
+							"if (pm.response.json().status && pm.response.json().data.data.length > 0) {",
+							"    const timeSlot = pm.response.json().data.data[0].attributes.start_time;",
+							"    pm.environment.set(\"available_time\", timeSlot);",
+							"    console.log(\"Available time stored: \" + timeSlot);",
+							"}"
+						],
+						"type": "text/javascript"
+					}
+				}
+			]
+		},
+		{
+			"name": "3. Create Reservation (Payment Test)",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "123456789",
+						"type": "text"
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"restaurant_id\": \"{{restaurant_id}}\",\n  \"covers\": 4,\n  \"start_time\": \"{{available_time}}\",\n  \"first_name\": \"John\",\n  \"last_name\": \"Doe\",\n  \"email\": \"john.doe@example.com\",\n  \"phone\": \"+1234567890\",\n  \"notes\": \"Window seat preferred\"\n}"
+				},
+				"url": {
+					"raw": "{{base_url}}/create_reservation",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"create_reservation"
+					]
+				}
+			},
+			"response": [],
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status is 201\", function () {",
+							"    pm.response.to.have.status(201);",
+							"});",
+							"",
+							"pm.test(\"Reservation created successfully\", function () {",
+							"    const response = pm.response.json();",
+							"    pm.expect(response.status).to.be.true;",
+							"    pm.expect(response.message).to.include(\"successfully\");",
+							"});",
+							"",
+							"pm.test(\"Payment information is present\", function () {",
+							"    const response = pm.response.json();",
+							"    ",
+							"    // Check if payment is required",
+							"    if (response.payment_required) {",
+							"        pm.expect(response.payment_url).to.be.a('string');",
+							"        pm.expect(response.payment_amount).to.be.a('number');",
+							"        pm.expect(response.payment_url).to.include('http');",
+							"        ",
+							"        console.log(\"Payment Required: \" + response.payment_required);",
+							"        console.log(\"Payment URL: \" + response.payment_url);",
+							"        console.log(\"Payment Amount: \" + response.payment_amount);",
+							"    } else {",
+							"        console.log(\"No payment required for this reservation\");",
+							"    }",
+							"});",
+							"",
+							"pm.test(\"Local reservation ID is generated\", function () {",
+							"    const response = pm.response.json();",
+							"    pm.expect(response.local_id).to.be.a('number');",
+							"});",
+							"",
+							"// Store payment information for further testing",
+							"if (pm.response.json().payment_url) {",
+							"    pm.environment.set(\"payment_url\", pm.response.json().payment_url);",
+							"    pm.environment.set(\"payment_amount\", pm.response.json().payment_amount);",
+							"    pm.environment.set(\"local_reservation_id\", pm.response.json().local_id);",
+							"    console.log(\"Payment URL stored: \" + pm.response.json().payment_url);",
+							"}"
+						],
+						"type": "text/javascript"
+					}
+				}
+			]
+		},
+		{
+			"name": "4. Payment URL Extraction Analysis",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "123456789",
+						"type": "text"
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"restaurant_id\": \"{{restaurant_id}}\",\n  \"covers\": 2,\n  \"start_time\": \"{{available_time}}\",\n  \"first_name\": \"Jane\",\n  \"last_name\": \"Smith\",\n  \"email\": \"jane.smith@example.com\",\n  \"phone\": \"+1987654321\",\n  \"notes\": \"Test payment extraction\"\n}"
+				},
+				"url": {
+					"raw": "{{base_url}}/create_reservation",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"create_reservation"
+					]
+				}
+			},
+			"response": [],
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Payment URL extraction analysis\", function () {",
+							"    const response = pm.response.json();",
+							"    ",
+							"    if (response.status) {",
+							"        console.log(\"=== PAYMENT ANALYSIS ===\");",
+							"        ",
+							"        // Check main response fields",
+							"        if (response.payment_url) {",
+							"            console.log(\"✓ Payment URL found in main response: \" + response.payment_url);",
+							"        }",
+							"        ",
+							"        if (response.payment_required) {",
+							"            console.log(\"✓ Payment required: \" + response.payment_required);",
+							"        }",
+							"        ",
+							"        if (response.payment_amount) {",
+							"            console.log(\"✓ Payment amount: \" + response.payment_amount);",
+							"        }",
+							"        ",
+							"        // Check EatApp response structure",
+							"        if (response.data && response.data.included) {",
+							"            console.log(\"✓ EatApp included array found with \" + response.data.included.length + \" items\");",
+							"            ",
+							"            response.data.included.forEach((item, index) => {",
+							"                console.log(\"  Item \" + index + \": \" + item.type);",
+							"                if (item.attributes && item.attributes.payment_widget_url) {",
+							"                    console.log(\"  ✓ Payment widget URL found in included[\" + index + \"]: \" + item.attributes.payment_widget_url);",
+							"                }",
+							"            });",
+							"        }",
+							"        ",
+							"        // Check relationships",
+							"        if (response.data && response.data.data && response.data.data.relationships) {",
+							"            console.log(\"✓ Relationships found in response\");",
+							"        }",
+							"        ",
+							"        // Check data attributes",
+							"        if (response.data && response.data.data && response.data.data.attributes) {",
+							"            console.log(\"✓ Data attributes found in response\");",
+							"        }",
+							"        ",
+							"        console.log(\"=== END ANALYSIS ===\");",
+							"    }",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			]
+		},
+		{
+			"name": "5. Get Reservations (Admin Debug)",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "123456789",
+						"type": "text"
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{base_url}}/get_reservations",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"get_reservations"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Error Tests",
+			"item": [
+				{
+					"name": "Invalid API Key",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "invalid_key",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/restaurants",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"restaurants"
+							]
+						}
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status is 401\", function () {",
+									"    pm.response.to.have.status(401);",
+									"});",
+									"",
+									"pm.test(\"Unauthorized message\", function () {",
+									"    const response = pm.response.json();",
+									"    pm.expect(response.status).to.be.false;",
+									"    pm.expect(response.message).to.include(\"Unauthorized\");",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "Missing Required Fields",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "123456789",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"restaurant_id\": \"{{restaurant_id}}\",\n  \"covers\": 4\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/create_reservation",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"create_reservation"
+							]
+						}
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status is 400\", function () {",
+									"    pm.response.to.have.status(400);",
+									"});",
+									"",
+									"pm.test(\"Missing field message\", function () {",
+									"    const response = pm.response.json();",
+									"    pm.expect(response.status).to.be.false;",
+									"    pm.expect(response.message).to.include(\"Missing required field\");",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				}
+			]
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					"// Set default headers",
+					"pm.request.headers.add({",
+					"    key: 'Content-Type',",
+					"    value: 'application/json'",
+					"});",
+					"",
+					"// Add timestamp for unique testing",
+					"pm.environment.set(\"timestamp\", new Date().toISOString());"
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost/bastian_parent/bastian/admin/index.php/api/eatapp_controller",
+			"type": "string"
+		},
+		{
+			"key": "api_key",
+			"value": "123456789",
+			"type": "string"
+		}
+	]
+} 

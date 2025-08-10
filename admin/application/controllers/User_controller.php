@@ -33,22 +33,23 @@ class user_controller extends CI_Controller {
 	}
 	public function backend_login() {
 		$remember_me_token = get_cookie('remember_me_token');
-		if(!empty($remember_me_token)) {
-			$password = $this->input->post('password');
-		} else {
-			$password = md5($this->input->post('password'));
-		}
+		// Always hash the password for database comparison
+		$password = md5($this->input->post('password'));
 		$data = array(
 			'user_name' =>  $this->input->post('username'),
 			'password' => $password,
 		);
+		
 		$result = $this->user_model->Backendlogin($data);
-		if($result == TRUE) {
+		
+		if(!empty($result)) {
 			$session_data = array(
 				'id' => $result->id
 			);
 			$this->session->set_userdata('admin_logged_in', $session_data);
+			
 			echo 'true';
+			exit; // Stop execution here to prevent any extra output
 			$login = array(
 				'id' => '',
 				'user_id' => $result->id,
@@ -81,6 +82,7 @@ class user_controller extends CI_Controller {
 			}
 		} else {
 			echo 'emailexist';
+			exit; // Stop execution here to prevent any extra output
 		}
 	}
 	public function backend_logout() {

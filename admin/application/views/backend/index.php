@@ -95,10 +95,12 @@
                     },
                 },
                 submitHandler: function(form) {
+                    var formData = new FormData(form);
+                    
                     $.ajax({
                         url: "<?=site_url('user_controller/backend_login')?>",
                         type: 'POST',
-                        data: new FormData(form),
+                        data: formData,
                         mimeType: "multipart/form-data",
                         contentType: false,
                         cache: false,
@@ -107,13 +109,13 @@
                             $("#loginform").append('<div class="preloaderremove"><div class="preloader"><div class="spinner"></div></div></div>');
                         },
                         success: function(data) {
-                            if(data == 'true') {
+                            if(data.trim() == 'true') {
                                 toastr.success('Login Successfully !!!');
                                 window.location.href = '<?=site_url('backend')?>';
-                            } else if(data == 'emailexist') {
-                                toastr.warning('Uername or Password incorrect !!!');
+                            } else if(data.trim() == 'emailexist') {
+                                toastr.warning('Username or Password incorrect !!!');
                             } else{
-                                toastr.error('Something wrong happened !!!')
+                                toastr.error('Something wrong happened !!!');
                             }
                             $("#loginform .preloaderremove").remove();
                         }

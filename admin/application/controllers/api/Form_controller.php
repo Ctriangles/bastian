@@ -82,8 +82,8 @@ class form_controller extends CI_Controller {
                         'notes' => ''
                     );
                     
-                    // Call EatApp API
-                    $eatapp_response = $this->create_eatapp_reservation($eatapp_data);
+                    // Call the secure Eatapp_controller method that saves to database first
+                    $eatapp_response = $this->create_secure_eatapp_reservation($eatapp_data);
                     
                     if($eatapp_response['success']) {
                         // Send email notification
@@ -103,11 +103,13 @@ class form_controller extends CI_Controller {
                         $result['eatapp_data'] = $eatapp_response['data'];
                         $result['payment_url'] = $eatapp_response['payment_url'];
                         $result['payment_required'] = $eatapp_response['payment_required'];
+                        $result['local_id'] = $eatapp_response['local_id'];
                         http_response_code(200);
                     } else {
                         $result['status'] = FALSE;
                         $result['message'] = 'Failed to create reservation in EatApp';
                         $result['error'] = $eatapp_response['error'];
+                        $result['local_id'] = $eatapp_response['local_id'] ?? null;
                         http_response_code(500);
                     }
                 } catch (Exception $e) {
@@ -187,7 +189,7 @@ class form_controller extends CI_Controller {
             $AddData = $this->form_model->AddFormDetailsData($data);
             
             if($AddData == TRUE) {
-                // Now create reservation in EatApp
+                // Now create reservation in EatApp using the secure database-first approach
                 try {
                     $eatapp_data = array(
                         'restaurant_id' => $jsonData->formvalue->restaurant_id,
@@ -200,8 +202,8 @@ class form_controller extends CI_Controller {
                         'notes' => isset($jsonData->formvalue->comments) ? $jsonData->formvalue->comments : ''
                     );
                     
-                    // Call EatApp API
-                    $eatapp_response = $this->create_eatapp_reservation($eatapp_data);
+                    // Call the secure Eatapp_controller method that saves to database first
+                    $eatapp_response = $this->create_secure_eatapp_reservation($eatapp_data);
                     
                     if($eatapp_response['success']) {
                         $result['status'] = TRUE;
@@ -209,11 +211,13 @@ class form_controller extends CI_Controller {
                         $result['eatapp_data'] = $eatapp_response['data'];
                         $result['payment_url'] = $eatapp_response['payment_url'];
                         $result['payment_required'] = $eatapp_response['payment_required'];
+                        $result['local_id'] = $eatapp_response['local_id'];
                         http_response_code(200);
                     } else {
                         $result['status'] = FALSE;
                         $result['message'] = 'Failed to create reservation in EatApp';
                         $result['error'] = $eatapp_response['error'];
+                        $result['local_id'] = $eatapp_response['local_id'] ?? null;
                         http_response_code(500);
                     }
                 } catch (Exception $e) {
@@ -254,7 +258,7 @@ class form_controller extends CI_Controller {
             );
             $AddData = $this->form_model->AddFormDetailsData($data);
             if($AddData == TRUE) {
-                // Now create reservation in EatApp
+                // Now create reservation in EatApp using the secure database-first approach
                 try {
                     $eatapp_data = array(
                         'restaurant_id' => $getshortdata->restaurant_id,
@@ -267,8 +271,8 @@ class form_controller extends CI_Controller {
                         'notes' => ''
                     );
                     
-                    // Call EatApp API
-                    $eatapp_response = $this->create_eatapp_reservation($eatapp_data);
+                    // Call the secure Eatapp_controller method that saves to database first
+                    $eatapp_response = $this->create_secure_eatapp_reservation($eatapp_data);
                     
                     if($eatapp_response['success']) {
                         // Send email notification
@@ -365,6 +369,118 @@ class form_controller extends CI_Controller {
         return $response;
     }
     
+    /**
+     * Create a secure reservation using database-first approach
+     */
+    private function create_secure_eatapp_reservation($jsonData) {
+        try {
+            // STEP 1: Store in our database FIRST (ensures data is never lost)
+            $local_reservation_id = $this->store_reservation_locally($jsonData);
+
+            if(!$local_reservation_id) {
+                return array(
+                    'success' => false,
+                    'error' => 'Failed to save reservation locally',
+                    'local_id' => null
+                );
+            }
+
+            // STEP 2: Try to send to EatApp
+            $eatapp_response = $this->create_eatapp_reservation($jsonData);
+            
+            if($eatapp_response['success']) {
+                // STEP 3: Update our database with EatApp response
+                $this->update_reservation_with_eatapp_response($local_reservation_id, $eatapp_response['data'], 'confirmed');
+                
+                return array(
+                    'success' => true,
+                    'data' => $eatapp_response['data'],
+                    'payment_url' => $eatapp_response['payment_url'],
+                    'payment_required' => $eatapp_response['payment_required'],
+                    'local_id' => $local_reservation_id
+                );
+            } else {
+                // EatApp API call failed - mark as failed but keep local reservation
+                $this->update_reservation_with_eatapp_response($local_reservation_id, null, 'failed');
+                
+                return array(
+                    'success' => false,
+                    'error' => $eatapp_response['error'],
+                    'local_id' => $local_reservation_id
+                );
+            }
+        } catch (Exception $e) {
+            return array(
+                'success' => false,
+                'error' => 'Error creating reservation: ' . $e->getMessage(),
+                'local_id' => null
+            );
+        }
+    }
+
+    /**
+     * Store reservation in our database first (before EatApp)
+     */
+    private function store_reservation_locally($jsonData) {
+        $data = array(
+            'restaurant_id' => $jsonData['restaurant_id'],
+            'covers' => intval($jsonData['covers']),
+            'start_time' => $jsonData['start_time'],
+            'first_name' => $jsonData['first_name'],
+            'last_name' => $jsonData['last_name'],
+            'email' => $jsonData['email'],
+            'phone' => $jsonData['phone'],
+            'notes' => isset($jsonData['notes']) ? $jsonData['notes'] : '',
+            'status' => 'pending',
+            'created_at' => date('Y-m-d H:i:s')
+        );
+
+        // Debug: Log the data being inserted
+        error_log("Storing reservation locally: " . json_encode($data));
+
+        $this->db->insert('eatapp_reservations', $data);
+        
+        // Check for database errors
+        if ($this->db->affected_rows() > 0) {
+            $insert_id = $this->db->insert_id();
+            error_log("Reservation stored successfully with ID: " . $insert_id);
+            return $insert_id;
+        } else {
+            error_log("Failed to store reservation. DB Error: " . $this->db->error()['message']);
+            return false;
+        }
+    }
+
+    /**
+     * Update reservation with EatApp response
+     */
+    private function update_reservation_with_eatapp_response($local_id, $eatapp_response, $status) {
+        $data = array(
+            'status' => $status,
+            'eatapp_response' => $eatapp_response ? json_encode($eatapp_response) : null,
+            'updated_at' => date('Y-m-d H:i:s')
+        );
+
+        if($eatapp_response && isset($eatapp_response['data']['attributes']['key'])) {
+            $data['eatapp_reservation_key'] = $eatapp_response['data']['attributes']['key'];
+        }
+
+        // Debug: Log the update data
+        error_log("Updating reservation ID {$local_id} with status: {$status}");
+
+        $this->db->where('id', $local_id);
+        $this->db->update('eatapp_reservations', $data);
+        
+        // Check for database errors
+        if ($this->db->affected_rows() >= 0) {
+            error_log("Reservation updated successfully. Affected rows: " . $this->db->affected_rows());
+            return true;
+        } else {
+            error_log("Failed to update reservation. DB Error: " . $this->db->error()['message']);
+            return false;
+        }
+    }
+
     /**
      * Create reservation in EatApp API
      */

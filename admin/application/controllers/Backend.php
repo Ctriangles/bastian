@@ -628,4 +628,139 @@ class backend extends CI_Controller {
 			$this->load->view('backend/common/footer');
 		}
 	}
+	
+	/**
+	 * EatApp Reservations Management
+	 */
+	public function eatapp_reservations() {
+		if(!isset($this->session->userdata['admin_logged_in'])) {
+			redirect(site_url('backend/'));
+		} else {
+			$this->load->model('eatapp_model');
+			
+			$result['title'] = 'EatApp Reservations';
+			$result['mtitle'] = 'Reservations';
+			$result['viewurl'] = 'eatapp_reservations';
+			$result['addurl'] = '';
+			$result['current_url'] = $this->uri->segment(2);
+			
+			// Get filter parameters
+			$status = $this->input->get('status');
+			$search = $this->input->get('search');
+			
+			if($search) {
+				$result['AllDatas'] = $this->eatapp_model->searchReservations($search);
+			} elseif($status) {
+				$result['AllDatas'] = $this->eatapp_model->getReservationsByStatus($status);
+			} else {
+				$result['AllDatas'] = $this->eatapp_model->getAllReservations();
+			}
+			
+			// Get statistics
+			$result['stats'] = $this->eatapp_model->getReservationStats();
+			
+			$this->load->view('backend/common/header', $result);
+			$this->load->view('backend/eatapp_reservations', $result);
+			$this->load->view('backend/common/footer');
+		}
+	}
+	
+	/**
+	 * EatApp Cache Management
+	 */
+	public function eatapp_cache() {
+		if(!isset($this->session->userdata['admin_logged_in'])) {
+			redirect(site_url('backend/'));
+		} else {
+			$this->load->model('eatapp_model');
+			
+			$result['title'] = 'EatApp Cache Management';
+			$result['mtitle'] = 'Cache';
+			$result['viewurl'] = 'eatapp_cache';
+			$result['addurl'] = '';
+			$result['current_url'] = $this->uri->segment(2);
+			
+			// Get cache data
+			$result['availability_cache'] = $this->eatapp_model->getAvailabilityCache();
+			$result['expired_cache'] = $this->eatapp_model->getExpiredAvailabilityCache();
+			$result['restaurant_cache'] = $this->eatapp_model->getRestaurantCache();
+			
+			$this->load->view('backend/common/header', $result);
+			$this->load->view('backend/eatapp_cache', $result);
+			$this->load->view('backend/common/footer');
+		}
+	}
+	
+	/**
+	 * EatApp Dashboard
+	 */
+	public function eatapp_dashboard() {
+		if(!isset($this->session->userdata['admin_logged_in'])) {
+			redirect(site_url('backend/'));
+		} else {
+			$this->load->model('eatapp_model');
+			
+			$result['title'] = 'EatApp Dashboard';
+			$result['mtitle'] = 'Dashboard';
+			$result['viewurl'] = 'eatapp_dashboard';
+			$result['addurl'] = '';
+			$result['current_url'] = $this->uri->segment(2);
+			
+			// Get statistics and recent data
+			$result['stats'] = $this->eatapp_model->getReservationStats();
+			$result['recent_reservations'] = $this->eatapp_model->getRecentReservations(7);
+			$result['restaurants'] = $this->eatapp_model->getRestaurantCache();
+			
+			$this->load->view('backend/common/header', $result);
+			$this->load->view('backend/eatapp_dashboard', $result);
+			$this->load->view('backend/common/footer');
+		}
+	}
+	
+	/**
+	 * Clear expired cache
+	 */
+	public function clear_expired_cache() {
+		if(!isset($this->session->userdata['admin_logged_in'])) {
+			redirect(site_url('backend/'));
+		} else {
+			$this->load->model('eatapp_model');
+			
+			$cleared = $this->eatapp_model->clearExpiredAvailabilityCache();
+			
+			if($cleared) {
+				$this->session->set_flashdata('success', 'Expired cache cleared successfully');
+			} else {
+				$this->session->set_flashdata('error', 'No expired cache to clear');
+			}
+			
+			redirect(site_url('backend/eatapp_cache'));
+		}
+	}
+	
+	/**
+	 * Update reservation status
+	 */
+	public function update_reservation_status() {
+		if(!isset($this->session->userdata['admin_logged_in'])) {
+			redirect(site_url('backend/'));
+		} else {
+			$this->load->model('eatapp_model');
+			
+			$id = $this->input->post('id');
+			$status = $this->input->post('status');
+			
+			if($id && $status) {
+				$updated = $this->eatapp_model->updateReservationStatus($id, $status);
+				
+				if($updated) {
+					$this->session->set_flashdata('success', 'Reservation status updated successfully');
+				} else {
+					$this->session->set_flashdata('error', 'Failed to update reservation status');
+				}
+			}
+			
+			redirect(site_url('backend/eatapp_reservations'));
+		}
+	}
 }

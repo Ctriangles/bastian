@@ -1,6 +1,6 @@
 # Bastian Hospitality - Restaurant Reservation System
 
-A comprehensive restaurant reservation system built with React frontend and CodeIgniter backend, featuring integration with EatApp's reservation management system.
+A comprehensive restaurant reservation system built with React frontend and CodeIgniter backend, featuring integration with EatApp's reservation management system with secure database-first approach.
 
 ## 🏗️ Project Architecture
 
@@ -12,6 +12,7 @@ A comprehensive restaurant reservation system built with React frontend and Code
   - Responsive restaurant website
   - Multi-step reservation forms
   - EatApp integration for real-time availability
+  - Payment integration with Stripe
   - Google Analytics & Facebook Pixel tracking
   - SEO optimized with dynamic meta tags
 
@@ -20,10 +21,11 @@ A comprehensive restaurant reservation system built with React frontend and Code
 - **Framework**: CodeIgniter 3.x with PHP
 - **Database**: MySQL (`bastiann_backend`)
 - **Key Features**:
-  - RESTful API endpoints
+  - RESTful API endpoints with secure database-first approach
   - Email notifications
   - Admin dashboard
   - CORS enabled for frontend integration
+  - EatApp API integration with local data backup
 
 ## 🚀 Quick Start
 
@@ -76,7 +78,7 @@ sudo /Applications/XAMPP/xamppfiles/xampp start
 
 ### Core Tables
 
-#### `tbl_forms_data` - Main Reservation Data
+#### `tbl_forms_data` - Legacy Reservation Data (Deprecated)
 ```sql
 - id (Primary Key)
 - restaurant_id (varchar)
@@ -96,7 +98,7 @@ sudo /Applications/XAMPP/xamppfiles/xampp start
 - status (int)
 ```
 
-#### `tbl_forms` - Short Form Data
+#### `tbl_forms` - Legacy Short Form Data (Deprecated)
 ```sql
 - id (Primary Key)
 - restaurant_id (int)
@@ -121,6 +123,63 @@ sudo /Applications/XAMPP/xamppfiles/xampp start
 - status (int)
 ```
 
+### EatApp Integration Tables (Current System)
+
+#### `eatapp_reservations` - Main Reservation Storage (ACTIVE)
+```sql
+- id (Primary Key, Auto Increment)
+- restaurant_id (varchar) - EatApp restaurant ID
+- restaurant_name (varchar) - Restaurant name
+- diner_name (varchar) - Full diner name
+- eatapp_reservation_key (varchar) - EatApp reservation key (e.g., PRZ0Q0, L45HUZ)
+- eatapp_reservation_id (varchar) - EatApp internal ID
+- covers (int) - Number of people
+- start_time (datetime) - Reservation start time
+- reservation_date (date) - Reservation date
+- reservation_time (time) - Reservation time
+- first_name (varchar) - Customer first name
+- last_name (varchar) - Customer last name
+- email (varchar) - Customer email
+- phone (varchar) - Customer phone
+- notes (text) - Special requests
+- status (enum: pending,confirmed,failed,cancelled) - Reservation status
+- eatapp_response (longtext) - Full EatApp API response
+- payment_url (text) - Stripe payment URL
+- email_data (longtext) - Email notification data
+- qr_code_data (text) - QR code information
+- calendar_links (longtext) - Calendar integration links
+- share_url (text) - Shareable reservation URL
+- email_sent_at (timestamp) - Email sent timestamp
+- email_sent_to (varchar) - Email recipient
+- payment_amount (decimal) - Payment amount
+- payment_currency (varchar) - Payment currency (default: USD)
+- created_at (timestamp) - Record creation time
+- updated_at (timestamp) - Record update time
+```
+
+#### `eatapp_restaurants` - Restaurant Cache (ACTIVE)
+```sql
+- id (Primary Key, Auto Increment)
+- eatapp_id (varchar) - EatApp restaurant ID
+- name (varchar) - Restaurant name
+- address (text) - Restaurant address
+- status (enum: active,inactive) - Restaurant status
+- eatapp_data (longtext) - Full EatApp restaurant data
+- created_at (timestamp) - Record creation time
+- updated_at (timestamp) - Record update time
+```
+
+#### `eatapp_availability` - Availability Cache (ACTIVE)
+```sql
+- id (Primary Key, Auto Increment)
+- restaurant_id (varchar) - EatApp restaurant ID
+- date (date) - Availability date
+- covers (int) - Number of people
+- available_slots (longtext) - Available time slots
+- cached_at (timestamp) - Cache creation time
+- expires_at (timestamp) - Cache expiration time
+```
+
 ## 🔌 API Documentation
 
 ### Base URL
@@ -133,9 +192,9 @@ All API endpoints require an Authorization header:
 Authorization: 123456789
 ```
 
-### Endpoints
+### Secure Database-First Endpoints (RECOMMENDED)
 
-#### 1. Reservation Form (Full)
+#### 1. Secure Reservation Form (Full)
 **POST** `/reservation-form`
 ```json
 {
@@ -154,7 +213,19 @@ Authorization: 123456789
 }
 ```
 
-#### 2. Header Form (Quick Reservation)
+**Response:**
+```json
+{
+  "status": true,
+  "message": "Reservation created successfully",
+  "eatapp_data": {...},
+  "payment_url": "https://pay.eat-sandbox.co/PRZ0Q0",
+  "payment_required": true,
+  "local_id": 66
+}
+```
+
+#### 2. Secure Header Form (Quick Reservation)
 **POST** `/header-form`
 ```json
 {
@@ -171,19 +242,7 @@ Authorization: 123456789
 }
 ```
 
-#### 3. Footer Short Form
-**POST** `/footer-sort-form`
-```json
-{
-  "formvalue": {
-    "restaurant_id": "string",
-    "booking_date": "YYYY-MM-DD",
-    "pax": "string"
-  }
-}
-```
-
-#### 4. Footer Long Form
+#### 3. Secure Footer Long Form
 **POST** `/footer-long-form`
 ```json
 {
@@ -194,6 +253,20 @@ Authorization: 123456789
     "mobile": "string",
     "age": "string",
     "pincode": "string"
+  }
+}
+```
+
+### Legacy Endpoints (DEPRECATED)
+
+#### 4. Footer Short Form
+**POST** `/footer-sort-form`
+```json
+{
+  "formvalue": {
+    "restaurant_id": "string",
+    "booking_date": "YYYY-MM-DD",
+    "pax": "string"
   }
 }
 ```
@@ -216,24 +289,45 @@ Authorization: 123456789
 ### Configuration
 The system integrates with EatApp's sandbox environment for real-time restaurant management.
 
-**API Configuration** (`src/API/api_url.jsx`):
-```javascript
-const EATAPP_CONCIERGE_API_URL = 'https://api.eat-sandbox.co/concierge/v2';
-const EatAppAuthKey = 'Bearer [TOKEN]';
-const EatAppGroupID = '4bcc6bdd-765b-4486-83ab-17c175dc3910';
+**API Configuration** (`admin/application/controllers/api/Eatapp_controller.php`):
+```php
+$eatapp_api_url = 'https://api.eat-sandbox.co/concierge/v2';
+$eatapp_auth_key = 'Bearer [TOKEN]';
+$eatapp_group_id = '4bcc6bdd-765b-4486-83ab-17c175dc3910';
 ```
+
+### Secure Database-First Approach
+1. **Save to Database First** - All reservations are immediately stored in `eatapp_reservations` table
+2. **Send to EatApp** - Reservation data is sent to EatApp API
+3. **Update Database** - Database is updated with EatApp response and reservation key
+4. **Payment Integration** - Payment URLs are extracted and returned to frontend
 
 ### Available EatApp Endpoints
 - **Restaurants**: Get list of restaurants
-- **Availability**: Check table availability
-- **Reservations**: Create/manage reservations
+- **Availability**: Check table availability (cached for 15 minutes)
+- **Reservations**: Create/manage reservations with payment integration
+
+## 💳 Payment Integration
+
+### Stripe Payment Flow
+1. **Reservation Created** - Customer submits reservation form
+2. **Payment Required** - System detects payment requirement (usually $10-20 USD)
+3. **Payment URL Generated** - EatApp creates Stripe payment link
+4. **Customer Pays** - Customer completes payment via Stripe
+5. **Reservation Confirmed** - Reservation is confirmed after payment
+
+### Payment Configuration
+- **Gateway**: Stripe (via EatApp)
+- **Currency**: USD (default)
+- **Amount**: $10-20 USD per reservation (varies by restaurant)
+- **Payment URL Format**: `https://pay.eat-sandbox.co/[RESERVATION_KEY]`
 
 ## 🎨 Frontend Structure
 
 ### Key Components
-- `Header.jsx` - Navigation and quick reservation
-- `Footer.jsx` - Contact forms and links
-- `Reservation.jsx` - Main reservation form
+- `Header.jsx` - Navigation and quick reservation (uses secure API)
+- `Footer.jsx` - Contact forms and links (uses secure API)
+- `Reservation.jsx` - Main reservation form (uses secure API)
 - `ReservationEatApp.jsx` - EatApp integrated reservations
 
 ### Pages
@@ -243,7 +337,7 @@ const EatAppGroupID = '4bcc6bdd-765b-4486-83ab-17c175dc3910';
 - Various restaurant-specific pages
 
 ### API Integration
-- `src/API/reservation.jsx` - Backend API calls
+- `src/API/reservation.jsx` - Backend API calls (secure endpoints)
 - `src/API/user-reservation.jsx` - EatApp integration
 - `src/API/api_url.jsx` - Configuration
 
@@ -264,69 +358,14 @@ $db['default'] = array(
     'username' => 'bastiann_backend',
     'password' => 'backend@2927',
     'database' => 'bastiann_backend',
-    // ... other settings
+    'dbdriver' => 'mysqli'
 );
 ```
 
-## 🚀 Deployment
+## 📝 API Usage Examples
 
-### Frontend Deployment
-```bash
-cd bastian-updated-reservation-api
-npm run build
-# Deploy dist/ folder to web server
-```
-
-### Backend Deployment
-1. Upload `admin/` folder to web server
-2. Configure database connection
-3. Set up email SMTP settings
-4. Update CORS settings for production domain
-
-## 🔍 Testing
-
-### API Testing
-```bash
-# Test reservation endpoint
-curl -X POST http://localhost/bastian-admin/api/reservation-form \
-  -H "Authorization: 123456789" \
-  -H "Content-Type: application/json" \
-  -d '{"formvalue":{"restaurant_id":"test","pax":"2","booking_date":"2025-07-10","booking_time":"19:00","full_name":"Test User","email":"test@example.com","mobile":"1234567890","age":"25","pincode":"123456","comments":"Test reservation"}}'
-```
-
-### Frontend Testing
-1. Open `http://localhost:5173`
-2. Navigate to reservation page
-3. Fill out and submit forms
-4. Check database for entries
-
-## 📝 Development Workflow
-
-### Detailed Reservation Process Flow
-
-#### 1. Frontend User Journey
-```
-User visits website (localhost:5173)
-    ↓
-Navigates to Reservations page (/reservations)
-    ↓
-Selects restaurant and date/time
-    ↓
-Fills out reservation form with:
-    - Restaurant ID
-    - Number of guests (pax)
-    - Booking date & time
-    - Personal details (name, email, phone)
-    - Additional info (age, pincode, comments)
-    ↓
-Form validation (React)
-    ↓
-Submit button triggers API call
-```
-
-#### 2. API Communication Flow
+### Frontend Reservation Call
 ```javascript
-// Frontend API call (src/API/reservation.jsx)
 const ReservationForm = async (formvalue) => {
     const response = await axios.post(Apis.ReservationForm,
         { formvalue },
@@ -341,7 +380,7 @@ const ReservationForm = async (formvalue) => {
 };
 ```
 
-#### 3. Backend Processing Flow
+### Backend Processing Flow
 ```
 API Request received at /api/reservation-form
     ↓
@@ -351,198 +390,58 @@ Authentication check (API key validation)
     ↓
 Data extraction and formatting
     ↓
-Database insertion (tbl_forms_data table)
+Database insertion (tbl_forms_data table - legacy)
     ↓
-Email notification sent to restaurant
+Secure EatApp integration (create_secure_eatapp_reservation)
     ↓
-EatApp integration attempt (sendDataAfterInsert)
+Database insertion (eatapp_reservations table - current)
     ↓
-Response sent back to frontend
-```
-
-#### 4. Database Operations
-```sql
--- Data inserted into tbl_forms_data
-INSERT INTO tbl_forms_data (
-    restaurant_id, booking_date, booking_time,
-    full_name, email_id, contact_number,
-    age, pax, pin_code, comments,
-    user_ip, insert_date, edit_date, status
-) VALUES (...);
-```
-
-#### 5. EatApp Integration Flow
-```
-Backend triggers sendDataAfterInsert()
+EatApp API call with payment integration
     ↓
-Constructs API call to EatApp sandbox
+Database update with EatApp response
     ↓
-Sends reservation data to EatApp system
-    ↓
-EatApp processes and stores reservation
-    ↓
-Restaurant staff can view in EatApp dashboard
+Response sent back to frontend with payment URL
 ```
 
-### Component Architecture
+## 🔒 Security Features
 
-#### Frontend Components Hierarchy
-```
-App.jsx
-├── Header.jsx (Quick reservation form)
-├── Routes
-│   ├── Home.jsx
-│   ├── Reservations.jsx
-│   │   └── Reservation.jsx (Main form)
-│   ├── ReservationsNew.jsx
-│   │   └── ReservationEatApp.jsx (EatApp integration)
-│   └── Other pages...
-└── Footer.jsx (Contact forms)
-```
+### Database-First Approach
+- **No Data Loss** - All reservations saved locally before API calls
+- **Audit Trail** - Complete history of all reservation attempts
+- **Error Recovery** - Failed API calls don't lose customer data
+- **Status Tracking** - Track pending, confirmed, failed, cancelled statuses
 
-#### Backend Controller Structure
-```
-admin/application/controllers/api/
-└── Form_controller.php
-    ├── HeaderForm() - Quick reservations
-    ├── FooterSortForm() - Short form data
-    ├── FooterLongForm() - Complete form data
-    ├── ReservationForm() - Main reservation endpoint
-    ├── Career() - Career applications
-    └── sendDataAfterInsert() - EatApp integration
+### CORS Configuration
+```php
+header('Access-Control-Allow-Origin: *');
+header('Access-Control-Allow-Methods: GET, POST, OPTIONS, PUT, DELETE');
+header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Request-Type, X-Client-Version, X-Platform');
 ```
 
-### Data Flow Diagram
-```
-[React Frontend]
-       ↓ HTTP POST
-[CodeIgniter API]
-       ↓ SQL INSERT
-[MySQL Database]
-       ↓ Email/EatApp
-[External Services]
-```
+## 🚀 Deployment
 
-### Code Structure
-```
-bastian/
-├── bastian-updated-reservation-api/    # React Frontend
-│   ├── src/
-│   │   ├── components/                 # Reusable components
-│   │   ├── pages/                      # Page components
-│   │   ├── API/                        # API integration
-│   │   └── assets/                     # Static assets
-│   └── package.json
-├── admin/                              # CodeIgniter Backend
-│   ├── application/
-│   │   ├── controllers/api/            # API controllers
-│   │   ├── models/                     # Database models
-│   │   ├── views/                      # Email templates
-│   │   └── config/                     # Configuration
-│   └── index.php
-└── bastiann_backend.sql               # Database schema
-```
+### Production Checklist
+1. **Update API URLs** - Change from localhost to production domain
+2. **Database Migration** - Ensure all tables are created
+3. **SSL Certificate** - Enable HTTPS for payment security
+4. **Environment Variables** - Set production database credentials
+5. **Email Configuration** - Configure SMTP for notifications
+6. **Monitoring** - Set up error logging and monitoring
 
-## 🛠️ Troubleshooting
-
-### Common Issues
-
-1. **CORS Errors**: Check CORS headers in `Form_controller.php`
-2. **Database Connection**: Verify XAMPP MySQL is running
-3. **API 404 Errors**: Ensure backend is copied to XAMPP htdocs
-4. **Email Not Sending**: Configure SMTP settings in admin panel
-
-### Logs
-- Frontend: Browser console
-- Backend: `admin/application/logs/`
-- Apache: XAMPP logs directory
-
-## ✅ Current Project Status
-
-### ✅ Working Features
-- ✅ React frontend running on `http://localhost:5173`
-- ✅ CodeIgniter backend running on `http://localhost/bastian-admin`
-- ✅ Database connection and schema setup
-- ✅ API endpoints functional and tested
-- ✅ **SECURE** EatApp integration with backend proxy
-- ✅ Email notifications system
-- ✅ CORS properly configured
-- ✅ Responsive design with Tailwind CSS
-- ✅ **API credentials protected** from frontend exposure
-
-### 🔒 Security Improvements
-- ✅ **EatApp API credentials moved to backend** - No longer exposed in browser
-- ✅ **Backend proxy pattern implemented** - Secure server-to-server communication
-- ✅ **Frontend uses secure API wrapper** - Only backend API key exposed (safe)
-- ✅ **All reservation functionality maintained** - No feature loss
-
-### 🔧 Known Issues
-- ⚠️ Minor URL variable issue in EatApp integration (line 320 in Form_controller.php)
-- ⚠️ Some npm audit vulnerabilities (1 low severity)
-
-### 🚀 Next Steps
-1. Fix the EatApp URL variable issue
-2. Update npm packages to resolve security vulnerabilities
-3. Add comprehensive error handling
-4. Implement reservation confirmation emails to customers
-5. Add admin dashboard for managing reservations
-6. Set up production deployment pipeline
-
-## 🔄 Development Commands
-
-### Frontend Development
-```bash
-# Start development server
-cd bastian-updated-reservation-api
-npm run dev
-
-# Build for production
-npm run build
-
-# Run linting
-npm run lint
-
-# Preview production build
-npm run preview
-```
-
-### Backend Development
-```bash
-# Start XAMPP services
-sudo /Applications/XAMPP/xamppfiles/xampp start
-
-# Stop XAMPP services
-sudo /Applications/XAMPP/xamppfiles/xampp stop
-
-# View logs
-tail -f /Applications/XAMPP/xamppfiles/logs/error_log
-```
-
-### Database Management
-```bash
-# Access MySQL via command line
-/Applications/XAMPP/xamppfiles/bin/mysql -u root -p
-
-# Backup database
-/Applications/XAMPP/xamppfiles/bin/mysqldump -u root -p bastiann_backend > backup.sql
-
-# Restore database
-/Applications/XAMPP/xamppfiles/bin/mysql -u root -p bastiann_backend < bastiann_backend.sql
-```
+### Performance Optimization
+- **Availability Caching** - 15-minute cache for availability checks
+- **Database Indexing** - Optimized indexes on frequently queried fields
+- **API Rate Limiting** - Prevent abuse of reservation endpoints
+- **CDN Integration** - Static assets served via CDN
 
 ## 📞 Support
 
-For technical support or questions about the reservation system, please contact the development team.
-
-### Project Structure Summary
-- **Frontend**: Modern React app with Vite build system
-- **Backend**: CodeIgniter 3.x REST API
-- **Database**: MySQL with comprehensive reservation schema
-- **Integration**: EatApp sandbox for restaurant management
-- **Deployment**: XAMPP for local development, production-ready architecture
+For technical support or questions about the reservation system:
+- **Email**: chiranjivee.suman@ninetriangles.com
+- **Documentation**: This README file
+- **API Testing**: Use the provided test endpoints
 
 ---
 
-**Last Updated**: July 2025
-**Version**: 1.0.0
-**Status**: ✅ Fully Functional Development Environment
+**Last Updated**: August 8, 2025
+**Version**: 2.0 (Secure Database-First Implementation)

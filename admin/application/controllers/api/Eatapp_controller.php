@@ -24,9 +24,9 @@ class Eatapp_controller extends CI_Controller {
         }
         
         // EatApp API Configuration - SECURE (not exposed to frontend)
-        $this->eatapp_api_url = 'https://api.eat-sandbox.co/concierge/v2';
-        $this->eatapp_auth_key = 'Bearer eyJhbGciOiJIUzI1NiJ9.eyJleHAiOjE4OTIwNzM2MDAsImlhdCI6MTc0NTgxOTQ0NSwiaWQiOiJkOWZkNTI0Mi04YmQzLTQ1NDYtODNlNy1jZjU1NzY5MDI0MTIiLCJtb2RlbCI6IkNvbmNpZXJnZSIsImp0aSI6IjFkYWU1ZjYyOWM3M2VmOTU3M2U0IiwiYnkiOiJhbGlAZWF0YXBwLmNvIn0.ZCEiRP1gqPNvJEFYDVCk1uA6o0MSD2pzXu88eGh8xt0';
-        $this->eatapp_group_id = '4bcc6bdd-765b-4486-83ab-17c175dc3910';
+        $this->eatapp_api_url = $this->config->item('eatapp_api_url');
+        $this->eatapp_auth_key = $this->config->item('eatapp_auth_key');
+        $this->eatapp_group_id = $this->config->item('eatapp_group_id');
         
         $this->api_headers = array(
             'Authorization: ' . $this->eatapp_auth_key,

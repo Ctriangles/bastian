@@ -23,7 +23,29 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 | a PHP script and you can easily do that on your own.
 |
 */
-$config['base_url'] = 'https://bastian.ninetriangles.com/admin';
+// Environment Configuration
+// Change this to switch between local and live environments
+$environment = 'local'; // Options: 'local', 'live'
+
+if($environment === 'local') {
+    // Local Environment URLs
+    $config['base_url'] = 'http://localhost/bastian_parent/bastian/admin';
+    $config['frontend_url'] = 'http://localhost/bastian_parent/bastian-main';
+    $config['api_base_url'] = 'http://localhost/bastian_parent/bastian/admin/api';
+    $config['eatapp_api_url'] = 'https://api.eat-sandbox.co/concierge/v2';
+    $config['eatapp_auth_key'] = 'Bearer eyJhbGciOiJIUzI1NiJ9.eyJleHAiOjE4OTIwNzM2MDAsImlhdCI6MTc0NTgxOTQ0NSwiaWQiOiJkOWZkNTI0Mi04YmQzLTQ1NDYtODNlNy1jZjU1NzY5MDI0MTIiLCJtb2RlbCI6IkNvbmNpZXJnZSIsImp0aSI6IjFkYWU1ZjYyOWM3M2VmOTU3M2U0IiwiYnkiOiJhbGlAZWF0YXBwLmNvIn0.ZCEiRP1gqPNvJEFYDVCk1uA6o0MSD2pzXu88eGh8xt0';
+    $config['eatapp_group_id'] = '4bcc6bdd-765b-4486-83ab-17c175dc3910';
+} else {
+    // Live Environment URLs
+    $config['base_url'] = 'https://bastianhospitality.com/admin';
+    $config['frontend_url'] = 'https://bastianhospitality.com';
+    $config['api_base_url'] = 'https://bastianhospitality.com/admin/api';
+    $config['eatapp_api_url'] = 'https://api.eat.co/concierge/v2';
+    $config['eatapp_auth_key'] = 'Bearer [LIVE_BEARER_TOKEN]'; // Replace with live token
+    $config['eatapp_group_id'] = '[LIVE_GROUP_ID]'; // Replace with live group ID
+}
+
+$config['environment'] = $environment;
 $config['enable_cors'] = TRUE;
 /*
 |--------------------------------------------------------------------------

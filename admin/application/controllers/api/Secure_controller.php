@@ -135,11 +135,38 @@ class Secure_controller extends CI_Controller {
      * Handle form submission request
      */
     private function handle_form_submit($jsonData) {
-        // Load the Form controller and call its ReservationForm method
+        // Load the Form controller
         $form_controller = new Form_controller();
         
-        // Set the raw input stream for the ReservationForm method
+        // Set the raw input stream for the form methods
         $this->input->raw_input_stream = json_encode($jsonData);
-        $form_controller->ReservationForm();
+        
+        // Route to the correct method based on form_type
+        if(isset($jsonData['form_type'])) {
+            switch($jsonData['form_type']) {
+                case 'header-form':
+                    $form_controller->HeaderForm();
+                    break;
+                case 'footer-sort-form':
+                    $form_controller->FooterSortForm();
+                    break;
+                case 'footer-long-form':
+                    $form_controller->FooterLongForm();
+                    break;
+                case 'reservation-form':
+                    $form_controller->ReservationForm();
+                    break;
+                case 'career':
+                    $form_controller->Career();
+                    break;
+                default:
+                    // Default to reservation form for backward compatibility
+                    $form_controller->ReservationForm();
+                    break;
+            }
+        } else {
+            // Default to reservation form if no form_type specified
+            $form_controller->ReservationForm();
+        }
     }
 } 
