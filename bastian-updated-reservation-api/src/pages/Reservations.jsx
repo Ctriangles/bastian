@@ -15,6 +15,8 @@ import ReCAPTCHA from "react-google-recaptcha";
 
 import { HeaderForms } from "../API/reservation";
 import { useSecureRestaurants } from "../API/secure-reservation.jsx";
+import { API_URL } from "../API/api_url.jsx";
+import axios from "axios";
 
 import React from "react";
 import { Helmet } from 'react-helmet';
@@ -54,6 +56,7 @@ const Header = () => {
   const [formData, setFormData] = useState({
     restaurant_id: "",
     booking_date: "",
+    booking_time: "",
     full_name: "",
     email: "",
     mobile: "",
@@ -62,47 +65,152 @@ const Header = () => {
     pincode: "",
   });
 
+  // State for available time slots
+  const [availableTimeSlots, setAvailableTimeSlots] = useState([]);
+  const [loadingTimeSlots, setLoadingTimeSlots] = useState(false);
+
+  // Function to fetch available time slots
+  const fetchAvailableTimeSlots = async (restaurantId, bookingDate, pax) => {
+    if (!restaurantId || !bookingDate || !pax) {
+      console.log("🕐 TIME SLOTS DEBUG: Missing required data for fetching time slots");
+      return;
+    }
+
+    console.log("🕐 TIME SLOTS DEBUG: Fetching time slots for:", {
+      restaurantId,
+      bookingDate,
+      pax
+    });
+
+    setLoadingTimeSlots(true);
+    setAvailableTimeSlots([]);
+
+    try {
+      const availabilityData = {
+        restaurant_id: restaurantId,
+        earliest_start_time: `${bookingDate}T09:00:00`,
+        latest_start_time: `${bookingDate}T23:00:00`,
+        covers: parseInt(pax)
+      };
+
+      console.log("🕐 TIME SLOTS DEBUG: Calling availability API with:", availabilityData);
+
+      const response = await axios.post(
+        `${API_URL}/api/eatapp/availability`,
+        availabilityData,
+        {
+          headers: {
+            'Authorization': '123456789',
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      console.log("🕐 TIME SLOTS DEBUG: Availability API response:", response.data);
+
+      if (response.data.status && response.data.data) {
+        const timeSlots = response.data.data.data || [];
+        console.log("🕐 TIME SLOTS DEBUG: Available time slots:", timeSlots);
+        setAvailableTimeSlots(timeSlots);
+      } else {
+        console.log("🕐 TIME SLOTS DEBUG: No time slots available");
+        setAvailableTimeSlots([]);
+      }
+    } catch (error) {
+      console.error("🕐 TIME SLOTS DEBUG: Error fetching time slots:", error);
+      setAvailableTimeSlots([]);
+    } finally {
+      setLoadingTimeSlots(false);
+    }
+  };
+
+  // Effect to fetch time slots when restaurant, date, or pax changes
+  useEffect(() => {
+    if (formData.restaurant_id && formData.booking_date && formData.pax) {
+      fetchAvailableTimeSlots(formData.restaurant_id, formData.booking_date, formData.pax);
+    } else {
+      setAvailableTimeSlots([]);
+    }
+  }, [formData.restaurant_id, formData.booking_date, formData.pax]);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    console.log("🔵 RESERVATION DEBUG: Form submission started");
+    console.log("📋 Form Data:", formData);
+    console.log("🔐 ReCAPTCHA Value:", recaptchaValue);
 
     if (!recaptchaValue) {
+      console.log("❌ RESERVATION DEBUG: ReCAPTCHA not completed");
       alert("Please complete the reCAPTCHA");
-    } else {
-      setErrorMessage("");
-      setLoading(true);
-      try {
-        const data = await HeaderForms(formData);
-        //console.log('Form submitted successfully:', data);
-        setFormData({
-          restaurant_id: "",
-          booking_date: "",
-          full_name: "",
-          email: "",
-          mobile: "",
-          pax: "",
-          age: "",
-          pincode: "",
-        });
-        if (data.status === true) {
-          setErrorMessage(
-            "Thank you for submitting your details. A Bastian reservation executive will call you in 24 hours."
-          );
-        }
-      } catch (error) {
-        setErrorMessage("Something went wrong, please try again later.");
-      } finally {
-        setLoading(false); // Set loading to false when the request is completed (either success or failure)
-      }
+      return;
     }
-     //  Check if mobile number is exactly 10 digits
-     if (formData.mobile.length !== 10) {
+    
+    //  Check if mobile number is exactly 10 digits
+    if (formData.mobile.length !== 10) {
+      console.log("❌ RESERVATION DEBUG: Invalid mobile number length:", formData.mobile.length);
       alert("Mobile number must be exactly 10 digits.");
       return;
     }
+    
     //  Check if pincode is exactly 6 digits
     if (formData.pincode.length !== 6) {
+      console.log("❌ RESERVATION DEBUG: Invalid pincode length:", formData.pincode.length);
       alert("Pincode must be exactly 6 digits.");
       return;
+    }
+
+    // Check if booking time is selected
+    if (!formData.booking_time) {
+      console.log("❌ RESERVATION DEBUG: No booking time selected");
+      alert("Please select a booking time.");
+      return;
+    }
+
+    console.log("✅ RESERVATION DEBUG: All validations passed, calling API...");
+    setErrorMessage("");
+    setLoading(true);
+    
+    try {
+      console.log("🚀 RESERVATION DEBUG: Calling HeaderForms API with data:", formData);
+      const data = await HeaderForms(formData);
+      console.log("📦 RESERVATION DEBUG: API Response received:", data);
+      console.log("📊 RESERVATION DEBUG: Response status:", data?.status);
+      console.log("💬 RESERVATION DEBUG: Response message:", data?.message);
+      
+      setFormData({
+        restaurant_id: "",
+        booking_date: "",
+        booking_time: "",
+        full_name: "",
+        email: "",
+        mobile: "",
+        pax: "",
+        age: "",
+        pincode: "",
+      });
+      
+      if (data.status === true) {
+        console.log("✅ RESERVATION DEBUG: Success - showing success message");
+        setErrorMessage(
+          "Thank you for submitting your details. A Bastian reservation executive will call you in 24 hours."
+        );
+      } else {
+        console.log("⚠️ RESERVATION DEBUG: API returned false status");
+        console.log("📝 RESERVATION DEBUG: Error details:", data);
+        setErrorMessage(data?.message || "Failed to create reservation. Please try again.");
+      }
+    } catch (error) {
+      console.log("💥 RESERVATION DEBUG: API call failed with error:");
+      console.error("📋 Error object:", error);
+      console.error("📋 Error message:", error?.message);
+      console.error("📋 Error response:", error?.response);
+      console.error("📋 Error response data:", error?.response?.data);
+      console.error("📋 Error response status:", error?.response?.status);
+      setErrorMessage("Something went wrong, please try again later.");
+    } finally {
+      console.log("🔚 RESERVATION DEBUG: Form submission completed, setting loading to false");
+      setLoading(false);
     }
   };
   const handleChange = (e) => {
@@ -244,6 +352,46 @@ content="Reserve your table at Bastian and enjoy an unforgettable dining experie
                   />
                 </div>
               </div>
+              
+              {/* Time Slot Selection */}
+              <div className="flex justify-center items-center gap-2 p-2 py-0">
+                <div className="w-full">
+                  <select
+                    name="booking_time"
+                    className={`bg-[#101010] text-white border border-text-primary w-full p-2 px-1 outline-none !text-[14px] appearance-none ${
+                      formData.booking_time
+                        ? "!text-text-primary"
+                        : "text-[#a9a9a9]"
+                    }`}
+                    value={formData.booking_time}
+                    onChange={handleChange}
+                    required
+                    disabled={loadingTimeSlots || availableTimeSlots.length === 0}
+                  >
+                    <option value="">
+                      {loadingTimeSlots ? "Loading time slots..." :
+                       availableTimeSlots.length === 0 ? "Select date, restaurant & people first" :
+                       "Select Time Slot"}
+                    </option>
+                    {availableTimeSlots.map((slot, index) => {
+                      const startTime = new Date(slot.attributes.start_time);
+                      const timeString = startTime.toLocaleTimeString('en-US', {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        hour12: true
+                      });
+                      const timeValue = startTime.toTimeString().slice(0, 8); // HH:MM:SS format
+                      
+                      return (
+                        <option key={index} value={timeValue}>
+                          {timeString}
+                        </option>
+                      );
+                    })}
+                  </select>
+                </div>
+              </div>
+              
               <div className="flex justify-center items-center gap-2 p-2 py-0 relative">
                 <input
                   type="text"

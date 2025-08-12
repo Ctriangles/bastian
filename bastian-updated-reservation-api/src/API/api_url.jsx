@@ -1,10 +1,18 @@
-//const API_URL = "";
-// const API_URL = "http://localhost/bastian";
-// const API_URL = "https://bastianhospitality.com/admin";
-// const API_URL = "https://bastian.ninetriangles.com/admin";
-const API_URL = "http://localhost/bastian_parent/bastian/admin"; // Local development (2 restaurants)
-// const API_URL = "https://bastian.ninetriangles.com/admin"; // Production URL (5 restaurants) - COMMENTED OUT
+// SIMPLE ENVIRONMENT CONFIGURATION
+// Just comment/uncomment the environment you want to use
+
+// LOCAL DEVELOPMENT (Comment this block for other environments)
+// const API_URL = "http://localhost/bastian_parent/bastian/admin"; // Local development (2 restaurants)
+// const APP_URL = "http://localhost/bastian_parent/bastian/";
+
+// UAT ENVIRONMENT (Uncomment this block for UAT, comment above block)
+const API_URL = "https://bastian.ninetriangles.com/admin"; // UAT Environment
 const APP_URL = "https://bastian.ninetriangles.com/";
+
+// PRODUCTION ENVIRONMENT (Uncomment this block for Production, comment above blocks)
+// const API_URL = "https://bastianhospitality.com/admin"; // Production Environment
+// const APP_URL = "https://bastianhospitality.com/";
+
 
 // ⚠️ SECURITY NOTE: EatApp credentials have been moved to backend for security
 // Frontend now uses secure proxy endpoints instead of direct EatApp API calls
@@ -32,7 +40,7 @@ const Apis = {
 // DEPRECATED: Use UNIFIED_RESTAURANT_API instead
 const SECURE_EATAPP = {
   AVAILABILITY: `${API_URL}/api/eatapp/availability`,
-  RESERVATIONS: `${API_URL}/api/eatapp/reservations`,
+  RESERVATIONS: `${API_URL}/api/eatapp_controller/create_reservation`, // Fixed: Use correct endpoint
   RESTAURANTS: `${API_URL}/api/eatapp/restaurants`,
 };
 

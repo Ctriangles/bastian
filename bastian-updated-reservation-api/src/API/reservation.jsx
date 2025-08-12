@@ -3,20 +3,37 @@ import { Apis, UNIFIED_RESTAURANT_API } from './api_url.jsx';
 
 const HeaderForms = async (formvalue) => {
     const apiKey = '123456789';
+    console.log("🌐 API DEBUG: HeaderForms called with:", formvalue);
+    console.log("🔗 API DEBUG: API endpoint:", UNIFIED_RESTAURANT_API.SUBMIT_FORM);
+    
     try {
-        const response = await axios.post(UNIFIED_RESTAURANT_API.SUBMIT_FORM, { 
+        const requestData = { 
             form_type: 'header-form',
             formvalue 
-        }, {
+        };
+        console.log("📤 API DEBUG: Request data being sent:", requestData);
+        console.log("🔑 API DEBUG: Using API key:", apiKey);
+        
+        const response = await axios.post(UNIFIED_RESTAURANT_API.SUBMIT_FORM, requestData, {
             headers: {
                 'Authorization': apiKey,
                 'Content-Type': 'application/json',
             },
         });
-        //console.log(response.data);
+        
+        console.log("📥 API DEBUG: Raw response received:");
+        console.log("📊 Response status:", response.status);
+        console.log("📋 Response headers:", response.headers);
+        console.log("📦 Response data:", response.data);
+        
         return response.data;
     } catch (error) {
-        console.error('Error fetching contact form data:', error);
+        console.error('💥 API DEBUG: HeaderForms error occurred:');
+        console.error('📋 Error object:', error);
+        console.error('📋 Error message:', error?.message);
+        console.error('📋 Error response status:', error?.response?.status);
+        console.error('📋 Error response data:', error?.response?.data);
+        console.error('📋 Error config:', error?.config);
         throw error;
     }
 };
@@ -83,7 +100,10 @@ const ReservationForm = async (formvalue) => {
 const CreateReservation = async (reservationData) => {
     const apiKey = '123456789';
     try {
-        const response = await axios.post(UNIFIED_RESTAURANT_API.RESERVATIONS, reservationData, {
+        const response = await axios.post(UNIFIED_RESTAURANT_API.SUBMIT_FORM, {
+            form_type: 'reservation-form',
+            formvalue: reservationData
+        }, {
             headers: {
                 'Authorization': apiKey,
                 'Content-Type': 'application/json',

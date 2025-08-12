@@ -93,8 +93,11 @@ const checkAvailability = async (availabilityData) => {
 const createSecureReservation = async (reservationData) => {
   try {
     const response = await axios.post(
-      UNIFIED_RESTAURANT_API.RESERVATIONS,
-      reservationData,
+      UNIFIED_RESTAURANT_API.SUBMIT_FORM,
+      { 
+        form_type: 'reservation-form',
+        formvalue: reservationData
+      },
       { headers: API_HEADERS }
     );
 
@@ -230,6 +233,55 @@ const createFullReservation = async (formData) => {
       status: error.response?.status,
       statusText: error.response?.statusText
     });
+
+    // Check if this is a 422 error with successful backend data
+    if (error.response?.status === 422 && error.response?.data?.status === true) {
+      console.log('422 error but backend reports success - treating as success');
+      return {
+        success: true,
+        data: error.response.data.eatapp_data || error.response.data,
+        message: error.response.data.message || 'Reservation created successfully',
+        error: null,
+        validations: null,
+        backendSaved: true,
+        payment_url: error.response.data.payment_url,
+        payment_required: error.response.data.payment_required
+      };
+    }
+
+    // Check if this is a 422 error but the reservation was actually successful
+    // (emails sent, data saved) - look for success indicators
+    if (error.response?.status === 422 && error.response?.data) {
+      const responseData = error.response.data;
+      
+      // If we have eatapp_data or any success indicators, treat as success
+      if (responseData.eatapp_data || responseData.local_id || responseData.fallback_success) {
+        console.log('422 error but found success indicators - treating as success');
+        return {
+          success: true,
+          data: responseData.eatapp_data || { success: true },
+          message: responseData.message || 'Reservation processed successfully',
+          error: null,
+          validations: null,
+          backendSaved: true,
+          payment_url: responseData.payment_url,
+          payment_required: responseData.payment_required
+        };
+      }
+    }
+
+    // Check if this is any HTTP error with response data
+    if (error.response?.data) {
+      return {
+        success: false,
+        data: null,
+        message: error.response.data.message || 'Failed to create reservation',
+        error: error.response.data.error || 'Unknown error',
+        validations: error.response.data.validations || null,
+        backendSaved: false
+      };
+    }
+
     return {
       success: false,
       data: null,

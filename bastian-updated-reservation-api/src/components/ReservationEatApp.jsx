@@ -121,33 +121,52 @@ const ReservationsEatApp = () => {
 
       const result = await createFullReservation(reservationData);
 
-      if (result.success && result.data?.data?.attributes?.key) {
-        // Create response object in the expected format
-        setResponse({
-          data: result.data,
-          status: 201
-        });
+      if (result.success) {
+        // Check if we have full EatApp response or fallback success
+        const hasFullEatAppResponse = result.data?.data?.attributes?.key;
+        const isFallbackSuccess = result.backendSaved || result.data?.success;
+        
+        if (hasFullEatAppResponse || isFallbackSuccess) {
+          // Create response object in the expected format
+          if (hasFullEatAppResponse) {
+            setResponse({
+              data: result.data,
+              status: 201
+            });
+          } else {
+            // Fallback response structure for cases where EatApp failed but reservation was saved
+            setResponse({
+              data: {
+                data: {
+                  attributes: {
+                    key: 'LOCAL_' + Date.now(), // Generate a local reference
+                    start_time: formData.start_time
+                  }
+                }
+              },
+              status: 200
+            });
+          }
 
-        // Check if payment URL exists in the response (updated API structure)
-        const paymentUrlFromResponse = result.payment_url || 
-                                      result.data?.payment_url || 
-                                      result.data?.data?.relationships?.payments?.data?.attributes?.payment_widget_url ||
-                                      result.data?.data?.attributes?.payment_widget_url ||
-                                      result.data?.data?.attributes?.payment_url;
-        setPaymentUrl(paymentUrlFromResponse || null);
-        
-        // Log the full response for debugging
-        console.log('Full reservation response:', result);
-        console.log('Payment URL found:', paymentUrlFromResponse);
-        console.log('Payment URL path checked:', {
-          direct: result.payment_url,
-          data_payment_url: result.data?.payment_url,
-          relationships_widget: result.data?.data?.relationships?.payments?.data?.attributes?.payment_widget_url,
-          attributes_widget: result.data?.data?.attributes?.payment_widget_url,
-          attributes_payment: result.data?.data?.attributes?.payment_url
-        });
-        
-        setReservationSuccess(true);
+          // Check if payment URL exists in the response (updated API structure)
+          const paymentUrlFromResponse = result.payment_url || 
+                                        result.data?.payment_url || 
+                                        result.data?.data?.relationships?.payments?.data?.attributes?.payment_widget_url ||
+                                        result.data?.data?.attributes?.payment_widget_url ||
+                                        result.data?.data?.attributes?.payment_url;
+          setPaymentUrl(paymentUrlFromResponse || null);
+          
+          // Log the full response for debugging
+          console.log('Full reservation response:', result);
+          console.log('Payment URL found:', paymentUrlFromResponse);
+          console.log('Has full EatApp response:', hasFullEatAppResponse);
+          console.log('Is fallback success:', isFallbackSuccess);
+          
+          setReservationSuccess(true);
+        } else {
+          // This shouldn't happen, but handle it gracefully
+          setError("Reservation may have been processed. Please check your email for confirmation.");
+        }
       } else {
         // Debug: Log the error details
         console.log('Reservation failed. Error details:', {
@@ -165,8 +184,10 @@ const ReservationsEatApp = () => {
             ...prev,
             start_time: ''
           }));
-        } else if (result.error === 'guest_rate_limited' || result.message?.includes('Too many bookings')) {
-          setError("You have already made a reservation with this email address. Please use a different email or contact us for assistance.");
+        } else if (result.error === 'guest_rate_limited' || result.message?.includes('Too many bookings') || result.message?.includes('guest_rate_limited')) {
+          setError("You have already made a reservation with this email address recently. Please use a different email or contact us for assistance.");
+        } else if (result.error === 'guest_rate_limited' || (result.data && result.data.error_code === 'guest_rate_limited')) {
+          setError("You have already made a reservation with this email address recently. Please use a different email or contact us for assistance.");
         } else if (result.validations) {
           const validationErrors = result.validations
             .map(v => `${v.key}: ${v.message}`)
@@ -678,7 +699,11 @@ const ReservationsEatApp = () => {
               </span>
 
               <div className="mt-6">
-                Eat ID: <span className="font-semibold text-custom-primary">{response.data.data.attributes.key}</span>
+                {response.data.data.attributes.key.startsWith('LOCAL_') ? (
+                  <span className="text-sm">Reference ID: <span className="font-semibold text-custom-primary">{response.data.data.attributes.key}</span></span>
+                ) : (
+                  <span>Eat ID: <span className="font-semibold text-custom-primary">{response.data.data.attributes.key}</span></span>
+                )}
               </div>
               
               {/* Debug info - commented out as requested */}

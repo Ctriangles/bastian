@@ -1,12 +1,35 @@
 <?php  
 defined('BASEPATH') OR exit('No direct script access allowed');
  
-class form_controller extends CI_Controller { 
+class Form_controller extends CI_Controller { 
+    /**
+     * Site email configuration 
+     */
+    protected $site_emailfrom;
+    protected $site_emailto;
+    protected $currentTime;
+    protected $apikey;
+    protected $result;
+    protected $form_model;
+    protected $setting_model;
+    protected $email;
+    protected $input;
+    protected $output;
+    protected $db;
+    protected $url;
+
+    /**
+     * Class constructor
+     */
     public function __construct() {  
         parent::__construct(); 
+        
+        // Set timezone and current time
         date_default_timezone_set('Asia/Kolkata');
-		$this->currentTime = date( 'Y-m-d H:i:s', time () );
+		$this->currentTime = date('Y-m-d H:i:s', time());
         $this->apikey = '123456789';
+        
+        // Set CORS headers
         header('Access-Control-Allow-Origin: *');
         header('Access-Control-Allow-Methods: GET, POST, OPTIONS, PUT, DELETE');
         header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Request-Type, X-Client-Version, X-Platform');
@@ -14,6 +37,38 @@ class form_controller extends CI_Controller {
             header('HTTP/1.1 204 No Content');
             exit;
         }
+        
+        // Load settings from model
+        $settings = $this->setting_model->viewSitedata();
+        foreach ($settings as $setting) {
+            if ($setting->setting_name == 'site_emailfrom') {
+                $this->site_emailfrom = $setting->setting_value;
+            } else if ($setting->setting_name == 'site_emailto') {
+                $this->site_emailto = $setting->setting_value;
+            }
+        }
+
+        // Configure email settings
+        $smtpdata = $this->setting_model->viewSMTPdata();
+        if ($smtpdata) {
+            $config = array(
+                'protocol' => $smtpdata->smtp_service,
+                'smtp_host' => $smtpdata->mail_host,
+                'smtp_port' => $smtpdata->mail_port,
+                'smtp_user' => $smtpdata->mail_username,
+                'smtp_pass' => $smtpdata->mail_password,
+                'smtp_crypto' => $smtpdata->smtp_crypto,
+                'mailtype' => $smtpdata->mail_type,
+                'smtp_timeout' => '30',
+                'charset' => 'utf-8',
+                'newline' => "\r\n",
+                'wordwrap' => TRUE
+            );
+            $this->email->initialize($config);
+        }
+        
+        // Initialize response variable
+        $this->result = array();
         $smtpdata = $this->setting_model->viewSMTPdata();
 		if(!empty($smtpdata)) {
 			$config = array(
@@ -165,10 +220,20 @@ class form_controller extends CI_Controller {
     }
     
     public function ReservationForm() {
+        error_log("🔵 BACKEND DEBUG: ReservationForm method called");
+        
         $token = $this->input->get_request_header('Authorization');
+        error_log("🔑 BACKEND DEBUG: Authorization token: " . $token);
+        error_log("🔑 BACKEND DEBUG: Expected API key: " . $this->apikey);
+        
         if($this->apikey == $token) {
+            error_log("✅ BACKEND DEBUG: Authorization successful");
+            
             $rawData = $this->input->raw_input_stream;
+            error_log("📥 BACKEND DEBUG: Raw input data: " . $rawData);
+            
             $jsonData = json_decode($rawData);
+            error_log("📦 BACKEND DEBUG: Decoded JSON data: " . json_encode($jsonData));
             
             // Save to local database first
             $data = array(
@@ -186,7 +251,10 @@ class form_controller extends CI_Controller {
                 'edit_date' => $this->currentTime
             );
             
+            error_log("💾 BACKEND DEBUG: Local database data prepared: " . json_encode($data));
+            
             $AddData = $this->form_model->AddFormDetailsData($data);
+            error_log("💾 BACKEND DEBUG: Local database save result: " . ($AddData ? 'SUCCESS' : 'FAILED'));
             
             if($AddData == TRUE) {
                 // Now create reservation in EatApp using the secure database-first approach
@@ -202,10 +270,14 @@ class form_controller extends CI_Controller {
                         'notes' => isset($jsonData->formvalue->comments) ? $jsonData->formvalue->comments : ''
                     );
                     
+                    error_log("🍽️ BACKEND DEBUG: EatApp data prepared: " . json_encode($eatapp_data));
+                    
                     // Call the secure Eatapp_controller method that saves to database first
                     $eatapp_response = $this->create_secure_eatapp_reservation($eatapp_data);
+                    error_log("🍽️ BACKEND DEBUG: EatApp response received: " . json_encode($eatapp_response));
                     
                     if($eatapp_response['success']) {
+                        error_log("✅ BACKEND DEBUG: EatApp reservation successful");
                         $result['status'] = TRUE;
                         $result['message'] = 'Reservation created successfully';
                         $result['eatapp_data'] = $eatapp_response['data'];
@@ -214,6 +286,8 @@ class form_controller extends CI_Controller {
                         $result['local_id'] = $eatapp_response['local_id'];
                         http_response_code(200);
                     } else {
+                        error_log("❌ BACKEND DEBUG: EatApp reservation failed");
+                        error_log("❌ BACKEND DEBUG: EatApp error: " . json_encode($eatapp_response['error']));
                         $result['status'] = FALSE;
                         $result['message'] = 'Failed to create reservation in EatApp';
                         $result['error'] = $eatapp_response['error'];
@@ -221,21 +295,27 @@ class form_controller extends CI_Controller {
                         http_response_code(500);
                     }
                 } catch (Exception $e) {
+                    error_log("💥 BACKEND DEBUG: Exception in EatApp reservation: " . $e->getMessage());
+                    error_log("💥 BACKEND DEBUG: Exception trace: " . $e->getTraceAsString());
                     $result['status'] = FALSE;
                     $result['message'] = 'Error creating reservation in EatApp';
                     $result['error'] = $e->getMessage();
                     http_response_code(500);
                 }
             } else {
+                error_log("❌ BACKEND DEBUG: Local database save failed");
                 $result['status'] = FALSE;
                 $result['message'] = 'Failed to save reservation locally';
                 http_response_code(400);
             }
         } else {
+            error_log("❌ BACKEND DEBUG: Authorization failed");
             $result['status'] = FALSE;
             $result['message'] = 'unauthorized access';
             http_response_code(401);
         }
+        
+        error_log("📤 BACKEND DEBUG: Final response: " . json_encode($result));
         $this->output->set_content_type('application/json')->set_output(json_encode($result));
     }
     public function FooterLongForm() {
@@ -357,7 +437,7 @@ class form_controller extends CI_Controller {
         $this->output->set_content_type('application/json')->set_output(json_encode($result));
     }
     function sendDataAfterInsert($formData) {
-        // $url = "https://edyne.dytel.co.in/postbastianreservation.asp?SourceId=71&SourcePwd=!Online@2024&OutletCode=".urlencode($formData->restaurant_id)."&OutletPwd=BASTIANDEMO&CustomerName=" . urlencode($formData->full_name) . "&CustomerMobile=" . urlencode($formData->contact_number) . "&CountryCode=91&ReservationDate=" . urlencode(date('d-M-Y', strtotime($formData->booking_date))) . "&ReservationTime=00:00&Covers=" . urlencode($formData->pax) . "&Occasion=&Remarks=&AdvancePaid=0&DiscountPercentage=15&DiscountAmount=0";
+        $url = "https://edyne.dytel.co.in/postbastianreservation.asp?SourceId=71&SourcePwd=!Online@2024&OutletCode=".urlencode($formData->restaurant_id)."&OutletPwd=BASTIANDEMO&CustomerName=" . urlencode($formData->full_name) . "&CustomerMobile=" . urlencode($formData->contact_number) . "&CountryCode=91&ReservationDate=" . urlencode(date('d-M-Y', strtotime($formData->booking_date))) . "&ReservationTime=00:00&Covers=" . urlencode($formData->pax) . "&Occasion=&Remarks=&AdvancePaid=0&DiscountPercentage=15&DiscountAmount=0";
         $ch = curl_init();
         curl_setopt($ch, CURLOPT_URL, $url);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);

@@ -2,7 +2,7 @@
 // Quick test to verify login endpoint
 echo "Testing login endpoint...\n";
 
-$url = 'http://localhost/bastian_parent/bastian/admin/user_controller/backend_login';
+$url = 'https://bastian.ninetriangles.com/admin/user_controller/backend_login';
 
 // Test with timestamp to avoid caching
 $url .= '?t=' . time();
