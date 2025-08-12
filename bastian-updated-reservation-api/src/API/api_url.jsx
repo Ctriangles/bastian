@@ -2,14 +2,16 @@
 // const API_URL = "http://localhost/bastian";
 // const API_URL = "https://bastianhospitality.com/admin";
 // const API_URL = "https://bastian.ninetriangles.com/admin";
-const API_URL = "http://localhost/bastian_parent/bastian/admin"; // Local development (2 restaurants)
-// const API_URL = "https://bastian.ninetriangles.com/admin"; // Production URL (5 restaurants) - COMMENTED OUT
-const APP_URL = "https://bastian.ninetriangles.com/";
+// Localhost URL (commented out)
+const API_URL = "http://localhost/bastian_parent/bastian/admin";
+const APP_URL = "http://localhost/bastian_parent/bastian";
+
+// const API_URL = "https://bastian.ninetriangles.com/admin"; // Production URL
+// const APP_URL = "https://bastian.ninetriangles.com/";
 
 // ⚠️ SECURITY NOTE: EatApp credentials have been moved to backend for security
 // Frontend now uses secure proxy endpoints instead of direct EatApp API calls
 // This prevents exposure of sensitive API keys in browser inspect element
-
 
 // UNIFIED RESTAURANT API (SECURE) - All restaurant operations through one API
 const UNIFIED_RESTAURANT_API = {

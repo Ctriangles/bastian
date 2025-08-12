@@ -7,11 +7,22 @@ class Eatapp_controller extends CI_Controller {
     private $eatapp_auth_key;
     private $eatapp_group_id;
     private $api_headers;
+    protected $apikey;
+    protected $currentTime;
     
     public function __construct() {  
         parent::__construct(); 
+        
+        // Load required CodeIgniter components
+        $this->load->database();
+        $this->load->helper(array('url', 'file'));
+        $this->load->config('config');
+        
+        // Set timezone and current time
         date_default_timezone_set('Asia/Kolkata');
-        $this->currentTime = date( 'Y-m-d H:i:s', time () );
+        $this->currentTime = date('Y-m-d H:i:s', time());
+        
+        // Set API key
         $this->apikey = '123456789';
         
         // CORS headers - Updated to allow obfuscated headers
@@ -44,16 +55,27 @@ class Eatapp_controller extends CI_Controller {
         $token = $this->input->get_request_header('Authorization');
         if($this->apikey == $token) {
             try {
+                // Debug logging for EatApp configuration
+                error_log("=== START RESTAURANT FETCH DEBUG ===");
+                error_log("EatApp API URL: " . $this->eatapp_api_url);
+                error_log("API Headers: " . print_r($this->api_headers, true));
+                
                 // Fetch restaurants directly from EatApp API
                 $url = $this->eatapp_api_url . '/restaurants';
+                error_log("Making request to: " . $url);
+                
                 $response = $this->make_curl_request($url, 'GET');
+                error_log("API Response: " . print_r($response, true));
 
                 if($response['success']) {
                     $eatapp_data = json_decode($response['data'], true);
                     
                     if($eatapp_data && isset($eatapp_data['data'])) {
                         $result['status'] = true;
-                        $result['data'] = $eatapp_data;
+                        $result['data'] = [
+                            'data' => $eatapp_data['data'],
+                            'meta' => isset($eatapp_data['meta']) ? $eatapp_data['meta'] : []
+                        ];
                         http_response_code(200);
                     } else {
                         $result['status'] = false;
@@ -273,12 +295,24 @@ class Eatapp_controller extends CI_Controller {
 
                 $response = $this->make_curl_request($url, 'POST', $postData, $headers);
                 
-                // Debug: Log the request and response
-                error_log("EatApp API Request: " . json_encode($postData));
-                error_log("EatApp API Response: " . json_encode($response));
+                // Enhanced error logging
+                error_log("\n[" . date('Y-m-d H:i:s') . "] === START RESERVATION LOG ===");
+                error_log("Incoming Request Data: " . print_r($jsonData, true));
+                error_log("EatApp API Request: " . json_encode($postData, JSON_PRETTY_PRINT));
+                error_log("EatApp API Response: " . print_r($response, true));
+                
+                if (isset($response['data'])) {
+                    $parsed_response = json_decode($response['data'], true);
+                    error_log("Parsed Response: " . print_r($parsed_response, true));
+                }
+                error_log("=== END RESERVATION LOG ===\n");
+                
+                // Debug: Log the full response
+                error_log("Full EatApp API Response: " . print_r($response, true));
                 
                 if($response['success']) {
                     $responseData = json_decode($response['data'], true);
+                    error_log("Parsed Response Data: " . print_r($responseData, true));
                     
                     if($response['http_code'] == 201 && isset($responseData['data']['attributes']['key'])) {
                         // STEP 3: Update our database with EatApp response
@@ -323,11 +357,31 @@ class Eatapp_controller extends CI_Controller {
                     // Handle specific error codes
                     if($response['http_code'] == 400) {
                         $result['message'] = 'Invalid reservation data';
+                        error_log("Validation Error: Invalid reservation data");
+                        if ($response['data']) {
+                            $errorData = json_decode($response['data'], true);
+                            error_log("Validation Details: " . print_r($errorData, true));
+                            $result['error_details'] = $errorData;
+                        }
                     } elseif($response['http_code'] == 422) {
                         $errorData = json_decode($response['data'], true);
+                        error_log("Validation Error (422): " . print_r($errorData, true));
                         if(isset($errorData['validations'])) {
                             $result['validations'] = $errorData['validations'];
                             $result['message'] = 'Validation errors occurred';
+                        }
+                    } elseif($response['http_code'] == 500) {
+                        error_log("Server Error (500): " . print_r($response, true));
+                        $result['message'] = 'Server error occurred';
+                        $result['error_details'] = 'Please check server logs for details';
+                        
+                        // Try to parse error response
+                        if ($response['data']) {
+                            $errorData = json_decode($response['data'], true);
+                            if ($errorData) {
+                                error_log("Server Error Details: " . print_r($errorData, true));
+                                $result['server_error'] = $errorData;
+                            }
                         }
                     }
 
@@ -668,10 +722,19 @@ class Eatapp_controller extends CI_Controller {
     private function make_curl_request($url, $method = 'GET', $data = null, $custom_headers = null) {
         $ch = curl_init();
 
+        // Enable SSL verification but allow self-signed certificates
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 2);
+        
         curl_setopt($ch, CURLOPT_URL, $url);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_TIMEOUT, 30);
         curl_setopt($ch, CURLOPT_HTTPHEADER, $custom_headers ?: $this->api_headers);
+        
+        // Add debugging information
+        curl_setopt($ch, CURLOPT_VERBOSE, true);
+        $verbose = fopen('php://temp', 'w+');
+        curl_setopt($ch, CURLOPT_STDERR, $verbose);
 
         if($method === 'POST') {
             curl_setopt($ch, CURLOPT_POST, true);
@@ -683,6 +746,27 @@ class Eatapp_controller extends CI_Controller {
         $response = curl_exec($ch);
         $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         $error = curl_error($ch);
+        
+        // Get verbose debug information
+        rewind($verbose);
+        $verboseLog = stream_get_contents($verbose);
+        fclose($verbose);
+
+        // Log debug information
+        error_log("=== CURL DEBUG INFO ===");
+        error_log("URL: " . $url);
+        error_log("Method: " . $method);
+        error_log("Headers: " . print_r($custom_headers ?: $this->api_headers, true));
+        if ($data) {
+            error_log("Request Data: " . json_encode($data));
+        }
+        error_log("Response Code: " . $http_code);
+        if ($error) {
+            error_log("CURL Error: " . $error);
+        }
+        error_log("Verbose Log: " . $verboseLog);
+        error_log("Response: " . print_r($response, true));
+        error_log("=== END CURL DEBUG ===");
 
         curl_close($ch);
 
