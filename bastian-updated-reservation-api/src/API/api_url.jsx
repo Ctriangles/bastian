@@ -1,13 +1,21 @@
-//const API_URL = "";
-// const API_URL = "http://localhost/bastian";
-// const API_URL = "https://bastianhospitality.com/admin";
-// const API_URL = "https://bastian.ninetriangles.com/admin";
-// Localhost URL (commented out)
-const API_URL = "http://localhost/bastian_parent/bastian/admin";
-const APP_URL = "http://localhost/bastian_parent/bastian";
+// Environment-aware API configuration
+// Automatically detects local vs production environment
 
-// const API_URL = "https://bastian.ninetriangles.com/admin"; // Production URL
-// const APP_URL = "https://bastian.ninetriangles.com/";
+// Detect environment based on hostname
+const isLocal = window.location.hostname === 'localhost' || 
+                window.location.hostname.includes('bastian_parent') ||
+                window.location.hostname === '127.0.0.1';
+
+// Set API URLs based on environment
+// Use a host-relative API URL in production so the frontend talks to the same origin
+// This avoids incorrect calls to localhost when the app is deployed under a different host
+const API_URL = isLocal
+  ? "http://localhost/bastian_parent/bastian/admin"
+  : '/admin';
+
+const APP_URL = isLocal
+  ? "http://localhost/bastian_parent/bastian"
+  : '/';
 
 // ⚠️ SECURITY NOTE: EatApp credentials have been moved to backend for security
 // Frontend now uses secure proxy endpoints instead of direct EatApp API calls
@@ -17,7 +25,7 @@ const APP_URL = "http://localhost/bastian_parent/bastian";
 const UNIFIED_RESTAURANT_API = {
   RESTAURANTS: `${API_URL}/api/eatapp/restaurants`,
   AVAILABILITY: `${API_URL}/api/eatapp/availability`,
-  RESERVATIONS: `${API_URL}/api/eatapp_controller/create_reservation`,
+  RESERVATIONS: `${API_URL}/api/eatapp/reservations`,
   DEBUG_RESERVATION: `${API_URL}/api/debug_controller/test_reservation`,
   SUBMIT_FORM: `${API_URL}/api/reservation-form`,
 };
@@ -38,4 +46,13 @@ const SECURE_EATAPP = {
   RESTAURANTS: `${API_URL}/api/eatapp/restaurants`,
 };
 
-export { API_URL, Apis, APP_URL, SECURE_EATAPP, UNIFIED_RESTAURANT_API };
+// Environment information for debugging
+const ENV_INFO = {
+  isLocal,
+  hostname: window.location.hostname,
+  apiUrl: API_URL,
+  appUrl: APP_URL,
+  environment: isLocal ? 'local' : 'production'
+};
+
+export { API_URL, Apis, APP_URL, SECURE_EATAPP, UNIFIED_RESTAURANT_API, ENV_INFO };

@@ -27,23 +27,52 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 // Change this to switch between local and live environments
 // defined('BASEPATH') OR exit('No direct script access allowed');
 
-// Environment: Local Only
-$config['base_url'] = 'http://localhost/bastian_parent/bastian/admin';
-$config['frontend_url'] = 'http://localhost/bastian_parent/bastian-main';
-$config['api_base_url'] = 'http://localhost/bastian_parent/bastian/admin/api';
-$config['eatapp_api_url'] = 'https://api.eat-sandbox.co/concierge/v2';
+/**
+ * 🟢 CURRENTLY ACTIVE: Production (Staging/Live)
+ */
+// $config['base_url']        = 'https://bastian.ninetriangles.com/admin';
+// $config['frontend_url']    = 'https://bastian.ninetriangles.com/';
+// $config['api_base_url']    = 'https://bastian.ninetriangles.com/admin/api';
+// $config['eatapp_api_url']  = 'https://api.eat-sandbox.co/concierge/v2';
+// $config['eatapp_auth_key'] = 'Bearer eyJhbGciOiJIUzI1NiJ9.eyJleHAiOjE4OTIwNzM2MDAsImlhdCI6MTc0NTgxOTQ0NSwiaWQiOiJkOWZkNTI0Mi04YmQzLTQ1NDYtODNlNy1jZjU1NzY5MDI0MTIiLCJtb2RlbCI6IkNvbmNpZXJnZSIsImp0aSI6IjFkYWU1ZjYyOWM3M2VmOTU3M2U0IiwiYnkiOiJhbGlAZWF0YXBwLmNvIn0.ZCEiRP1gqPNvJEFYDVCk1uA6o0MSD2pzXu88eGh8xt0';
+// $config['eatapp_group_id'] = '4bcc6bdd-765b-4486-83ab-17c175dc3910';
+// $config['environment']     = 'production';
+// $config['eatapp_payment_base_url'] = 'https://pay.eat-sandbox.co/';
+
+/**
+ * 🔵 Local Environment (for development)
+ */
+$config['base_url']        = 'http://localhost/bastian_parent/bastian/admin';
+$config['frontend_url']    = 'http://localhost/bastian_parent/bastian-main';
+$config['api_base_url']    = 'http://localhost/bastian_parent/bastian/admin/api';
+$config['eatapp_api_url']  = 'https://api.eat-sandbox.co/concierge/v2';
 $config['eatapp_auth_key'] = 'Bearer eyJhbGciOiJIUzI1NiJ9.eyJleHAiOjE4OTIwNzM2MDAsImlhdCI6MTc0NTgxOTQ0NSwiaWQiOiJkOWZkNTI0Mi04YmQzLTQ1NDYtODNlNy1jZjU1NzY5MDI0MTIiLCJtb2RlbCI6IkNvbmNpZXJnZSIsImp0aSI6IjFkYWU1ZjYyOWM3M2VmOTU3M2U0IiwiYnkiOiJhbGlAZWF0YXBwLmNvIn0.ZCEiRP1gqPNvJEFYDVCk1uA6o0MSD2pzXu88eGh8xt0';
 $config['eatapp_group_id'] = '4bcc6bdd-765b-4486-83ab-17c175dc3910';
+$config['environment']     = 'local';
+$config['eatapp_payment_base_url'] = 'https://pay.eat-sandbox.co/';
 
-// Live Environment (Commented)
+/**
+ * 🟡 Production with Live EatApp (when available)
+ */
+// $config['base_url']        = 'https://bastian.ninetriangles.com/admin';
+// $config['frontend_url']    = 'https://bastian.ninetriangles.com/';
+// $config['api_base_url']    = 'https://bastian.ninetriangles.com/admin/api';
+// $config['eatapp_api_url']  = 'https://api.eatapp.co/concierge/v2';
+// $config['eatapp_auth_key'] = 'Bearer <PRODUCTION_KEY_HERE>';
+// $config['eatapp_group_id'] = '4bcc6bdd-765b-4486-83ab-17c175dc3910';
+// $config['environment']     = 'production';
+// $config['eatapp_payment_base_url'] = 'https://pay.eatapp.co/';
+
+// Legacy commented code (keeping for reference)
 // $config['base_url'] = 'https://bastian.ninetriangles.com/admin';
 // $config['frontend_url'] = 'https://bastian.ninetriangles.com/';
 // $config['api_base_url'] = 'https://bastian.ninetriangles.com/admin/api';
-// $config['eatapp_api_url'] = 'https://api.eat.co/concierge/v2';
+// Production API (deprecated / not accessible): 'https://api.eat.co/concierge/v2'
+// Using sandbox API for both local and production environments to ensure availability:
+// $config['eatapp_api_url'] = 'https://api.eat-sandbox.co/concierge/v2';
 // $config['eatapp_auth_key'] = 'Bearer eyJhbGciOiJIUzI1NiJ9.eyJleHAiOjE4OTIwNzM2MDAsImlhdCI6MTc0NTgxOTQ0NSwiaWQiOiJkOWZkNTI0Mi04YmQzLTQ1NDYtODNlNy1jZjU1NzY5MDI0MTIiLCJtb2RlbCI6IkNvbmNpZXJnZSIsImp0aSI6IjFkYWU1ZjYyOWM3M2VmOTU3M2U0IiwiYnkiOiJhbGlAZWF0YXBwLmNvIn0.ZCEiRP1gqPNvJEFYDVCk1uA6o0MSD2pzXu88eGh8xt0';
 // $config['eatapp_group_id'] = '4bcc6bdd-765b-4486-83ab-17c175dc3910';
 
-$config['environment'] = 'production';
 $config['enable_cors'] = TRUE;
 /*
 |--------------------------------------------------------------------------
@@ -122,7 +151,7 @@ $config['charset'] = 'UTF-8';
 | setting this variable to TRUE (boolean).  See the user guide for details.
 |
 */
-$config['enable_hooks'] = FALSE;
+$config['enable_hooks'] = TRUE;
 
 /*
 |--------------------------------------------------------------------------

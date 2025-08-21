@@ -1,0 +1,361 @@
+# ===========================================
+# Bastian Hospitality Project .gitignore
+# ===========================================
+
+# ===========================================
+# PHP / CodeIgniter Backend
+# ===========================================
+
+# CodeIgniter specific
+admin/application/cache/*
+admin/application/logs/*
+admin/application/sessions/*
+admin/application/uploads/*
+admin/application/config/database.php
+admin/application/config/config.php
+
+# Keep cache directory structure but ignore contents
+admin/application/cache/.gitkeep
+admin/application/logs/.gitkeep
+admin/application/sessions/.gitkeep
+admin/application/uploads/.gitkeep
+
+# PHP specific
+*.php~
+*.php.bak
+*.php.swp
+*.php.swo
+*.log
+*.cache
+
+# Composer
+admin/composer.lock
+admin/vendor/
+admin/composer.phar
+
+# ===========================================
+# React Frontend
+# ===========================================
+
+# Dependencies
+bastian-updated-reservation-api/node_modules/
+bastian-updated-reservation-api/.pnp
+bastian-updated-reservation-api/.pnp.js
+
+# Production builds
+bastian-updated-reservation-api/build/
+bastian-updated-reservation-api/dist/
+bastian-updated-reservation-api/out/
+
+# Environment files
+bastian-updated-reservation-api/.env
+bastian-updated-reservation-api/.env.local
+bastian-updated-reservation-api/.env.development.local
+bastian-updated-reservation-api/.env.test.local
+bastian-updated-reservation-api/.env.production.local
+
+# Testing
+bastian-updated-reservation-api/coverage/
+bastian-updated-reservation-api/.nyc_output
+
+# IDE and Editor files
+bastian-updated-reservation-api/.vscode/
+bastian-updated-reservation-api/.idea/
+bastian-updated-reservation-api/*.swp
+bastian-updated-reservation-api/*.swo
+bastian-updated-reservation-api/*~
+
+# ===========================================
+# Database and Data Files
+# ===========================================
+
+# Database files
+*.sql
+*.sqlite
+*.db
+*.sqlite3
+
+# Data exports
+*.csv
+*.xlsx
+*.xls
+*.json
+
+# Backup files
+*.bak
+*.backup
+*_backup.*
+
+# ===========================================
+# Configuration Files (Sensitive)
+# ===========================================
+
+# Environment configurations
+.env
+.env.*
+config.local.php
+config.production.php
+database.local.php
+
+# API keys and secrets
+*secret*
+*key*
+*password*
+*credential*
+*config.php
+*database.php
+
+# ===========================================
+# Uploads and Media
+# ===========================================
+
+# User uploads
+admin/uploads/*
+admin/public/userfiles/*
+admin/public/uploads/*
+
+# Keep upload directory structure
+admin/uploads/.gitkeep
+admin/public/userfiles/.gitkeep
+admin/public/uploads/.gitkeep
+
+# Media files (if not version controlled)
+*.jpg
+*.jpeg
+*.png
+*.gif
+*.webp
+*.svg
+*.mp4
+*.mov
+*.avi
+*.mp3
+*.wav
+
+# ===========================================
+# Temporary and Cache Files
+# ===========================================
+
+# Temporary files
+*.tmp
+*.temp
+*.cache
+*.bak
+*.swp
+*.swo
+*~
+
+# System files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# ===========================================
+# IDE and Editor Specific
+# ===========================================
+
+# VSCode
+.vscode/
+*.code-workspace
+
+# IntelliJ IDEA
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Vim
+*.swp
+*.swo
+*~
+
+# Emacs
+*~
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+*.elc
+auto-save-list
+tramp
+.\#*
+
+# ===========================================
+# OS Generated Files
+# ===========================================
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+*.stackdump
+[Dd]esktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+*.lnk
+
+# Linux
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*
+
+# ===========================================
+# Package Managers
+# ===========================================
+
+# npm
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+.pnpm-debug.log*
+
+# Yarn
+.yarn-integrity
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/sdks
+!.yarn/versions
+
+# Composer
+composer.phar
+vendor/
+
+# ===========================================
+# Build and Deployment
+# ===========================================
+
+# Build outputs
+build/
+dist/
+out/
+.next/
+.nuxt/
+.vuepress/dist
+.serverless/
+.fusebox/
+.dynamodb/
+
+# Deployment
+.deploy/
+.deployignore
+deploy.sh
+deploy.yml
+
+# ===========================================
+# Testing and Coverage
+# ===========================================
+
+# Test coverage
+coverage/
+.nyc_output/
+*.lcov
+
+# Test results
+test-results/
+playwright-report/
+test-results.xml
+
+# ===========================================
+# Logs and Debug
+# ===========================================
+
+# Log files
+*.log
+logs/
+log/
+
+# Debug files
+*.debug
+debug/
+debug.log
+
+# ===========================================
+# Custom Project Specific
+# ===========================================
+
+# Bastian specific
+admin/application/config/config.production.php
+admin/application/config/database.production.php
+admin/application/config/config.local.php
+admin/application/config/database.local.php
+
+# API keys and sensitive data
+admin/application/config/eatapp_credentials.php
+admin/application/config/production_keys.php
+
+# Backup archives
+*.zip
+*.tar.gz
+*.rar
+*.7z
+
+# ===========================================
+# Keep Important Directories
+# ===========================================
+
+# Keep empty directories
+!admin/application/cache/.gitkeep
+!admin/application/logs/.gitkeep
+!admin/application/sessions/.gitkeep
+!admin/application/uploads/.gitkeep
+!admin/public/userfiles/.gitkeep
+!admin/public/uploads/.gitkeep
+
+# Keep documentation
+!*.md
+!docs/
+!README*
+!CHANGELOG*
+!LICENSE*
+
+# Keep configuration templates
+!admin/application/config/config.example.php
+!admin/application/config/database.example.php
+!bastian-updated-reservation-api/.env.example
+
+# ===========================================
+# Notes
+# ===========================================
+
+# IMPORTANT: 
+# - Never commit sensitive configuration files
+# - Always use .env.example or config.example.php as templates
+# - Keep database credentials out of version control
+# - Use environment variables for production configurations 

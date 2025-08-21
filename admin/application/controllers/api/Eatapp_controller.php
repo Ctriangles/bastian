@@ -9,6 +9,8 @@ class Eatapp_controller extends CI_Controller {
     private $api_headers;
     protected $apikey;
     protected $currentTime;
+    // Configured payment base URL (e.g. https://pay.eat-sandbox.co/)
+    private $eatapp_payment_base_url;
     
     public function __construct() {  
         parent::__construct(); 
@@ -16,7 +18,10 @@ class Eatapp_controller extends CI_Controller {
         // Load required CodeIgniter components
         $this->load->database();
         $this->load->helper(array('url', 'file'));
-        $this->load->config('config');
+        $this->load->library(array('session', 'form_validation'));
+        
+        // Load config
+        $this->load->config('config', TRUE);
         
         // Set timezone and current time
         date_default_timezone_set('Asia/Kolkata');
@@ -24,15 +29,6 @@ class Eatapp_controller extends CI_Controller {
         
         // Set API key
         $this->apikey = '123456789';
-        
-        // CORS headers - Updated to allow obfuscated headers
-        header('Access-Control-Allow-Origin: *');
-        header('Access-Control-Allow-Methods: GET, POST, OPTIONS, PUT, DELETE');
-        header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Request-Type, X-Client-Version, X-Platform');
-        if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-            header('HTTP/1.1 204 No Content');
-            exit;
-        }
         
         // EatApp API Configuration - SECURE (not exposed to frontend)
         $this->eatapp_api_url = $this->config->item('eatapp_api_url');
@@ -45,6 +41,9 @@ class Eatapp_controller extends CI_Controller {
             'Accept: application/json',
             'Content-Type: application/json'
         );
+
+    // Load centralized payment base URL from config (may be null)
+    $this->eatapp_payment_base_url = $this->config->item('eatapp_payment_base_url');
     }
     
     /**
@@ -55,10 +54,13 @@ class Eatapp_controller extends CI_Controller {
         $token = $this->input->get_request_header('Authorization');
         if($this->apikey == $token) {
             try {
-                // Debug logging for EatApp configuration
+                // Enhanced debug logging for production troubleshooting
                 error_log("=== START RESTAURANT FETCH DEBUG ===");
+                error_log("Environment: " . $this->config->item('environment'));
+                error_log("Server Host: " . ($_SERVER['HTTP_HOST'] ?? 'unknown'));
                 error_log("EatApp API URL: " . $this->eatapp_api_url);
                 error_log("API Headers: " . print_r($this->api_headers, true));
+                error_log("Config loaded successfully");
                 
                 // Fetch restaurants directly from EatApp API
                 $url = $this->eatapp_api_url . '/restaurants';
@@ -631,8 +633,26 @@ class Eatapp_controller extends CI_Controller {
             // Search recursively through the entire response
             $payment_url = $this->search_recursive_for_payment_url($responseData);
         }
-        
-        return $payment_url;
+        // Normalize URL: if the returned value is not an absolute URL but looks like a reservation key
+        // (e.g. "PRZ0Q0" or similar), prepend the configured payment base URL.
+        if ($payment_url && !filter_var($payment_url, FILTER_VALIDATE_URL)) {
+            $base = $this->config->item('eatapp_payment_base_url');
+            if ($base) {
+                // Ensure base ends with a slash
+                if (substr($base, -1) !== '/') {
+                    $base .= '/';
+                }
+                // Avoid duplicating slashes
+                $payment_url = $base . ltrim($payment_url, '/');
+            }
+        }
+
+        // Final validation - return only if it is a valid URL
+        if ($payment_url && filter_var($payment_url, FILTER_VALIDATE_URL)) {
+            return $payment_url;
+        }
+
+        return null;
     }
     
     /**
