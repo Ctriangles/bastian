@@ -14,6 +14,8 @@ import AtTheTopPage from "./pages/AtTheTopPage";
 import BastianBandraPage from "./pages/BastianBandraPage";
 import BastianGardenCity from "./pages/BastianGardenCity";
 import BastianEmpirePage from "./pages/BastianEmpirePage";
+import BastianInka from "./pages/BastianInka";
+import Blondie from "./pages/Blondie";
 import Career from "./pages/Career";
 import Thankyou from "./pages/Thankyou";
 import Reservations from "./pages/Reservations";
@@ -50,6 +52,8 @@ function AppRoutes() {
         <Route path="/bastianbandra" element={<BastianBandraPage />} />
         <Route path="/bastiangarden" element={<BastianGardenCity />} />
         <Route path="/bastianempire" element={<BastianEmpirePage />} />
+        <Route path="/bastianinka" element={<BastianInka />} />
+        <Route path="/blondie" element={<Blondie />} />
         <Route path="/career" element={<Career />} />
         <Route path="/thank-you" element={<Thankyou />} />
         <Route path="/reservations" element={<Reservations />} />
